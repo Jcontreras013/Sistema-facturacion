@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Venta {{ sale.number }}{% endblock %}
+{% block content %}
+<div class="invoice-box card p-4">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h3>Mini Market</h3>
+            <div class="text-muted">Factura {{ sale.number }}</div>
+        </div>
+        <div class="text-end">
+            <div>Fecha: {{ sale.created_at|date:"d/m/Y H:i" }}</div>
+            <div>Estado:
+                {% if sale.status == "completada" %}
+                    <span class="badge bg-success">Completada</span>
+                {% else %}
+                    <span class="badge bg-danger">Anulada</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <hr>
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <strong>Cliente:</strong> {{ sale.client.name|default:"Consumidor final" }}<br>
+            {% if sale.client %}<strong>Documento:</strong> {{ sale.client.document|default:"—" }}<br>{% endif %}
+        </div>
+        <div class="col-md-6 text-md-end">
+            <strong>Cajero:</strong> {{ sale.user|default:"—" }}<br>
+            <strong>Forma de pago:</strong> {{ sale.get_payment_method_display }}
+        </div>
+    </div>
+
+    <table class="table">
+        <thead><tr><th>Producto</th><th>Cantidad</th><th>Precio unit.</th><th class="text-end">Subtotal</th></tr></thead>
+        <tbody>
+        {% for item in sale.items.all %}
+            <tr>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>Q {{ item.unit_price|floatformat:2 }}</td>
+                <td class="text-end">Q {{ item.subtotal|floatformat:2 }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="row justify-content-end">
+        <div class="col-md-4">
+            <div class="d-flex justify-content-between"><span>Subtotal</span><span>Q {{ sale.subtotal|floatformat:2 }}</span></div>
+            <div class="d-flex justify-content-between"><span>Impuesto</span><span>Q {{ sale.tax|floatformat:2 }}</span></div>
+            <div class="d-flex justify-content-between fs-5"><strong>Total</strong><strong>Q {{ sale.total|floatformat:2 }}</strong></div>
+        </div>
+    </div>
+
+    {% if sale.notes %}<p class="mt-3"><strong>Notas:</strong> {{ sale.notes }}</p>{% endif %}
+
+    <div class="mt-4 no-print">
+        <button onclick="window.print()" class="btn btn-outline-secondary"><i class="bi bi-printer"></i> Imprimir</button>
+        <a href="{% url 'sales:sale_list' %}" class="btn btn-outline-secondary">Volver a ventas</a>
+        {% if sale.status == "completada" %}
+        <form method="post" action="{% url 'sales:sale_cancel' sale.pk %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('¿Anular esta venta? El stock será restituido.');">
+                <i class="bi bi-x-circle"></i> Anular venta
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

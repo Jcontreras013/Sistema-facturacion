@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<h2>{{ title }}</h2>
+<div class="card p-4" style="max-width: 600px;">
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">{{ form.name.label }}</label>
+            {{ form.name }}
+        </div>
+        <div class="mb-3">
+            <label class="form-label">{{ form.document.label }}</label>
+            {{ form.document }}
+        </div>
+        <div class="mb-3">
+            <label class="form-label">{{ form.phone.label }}</label>
+            {{ form.phone }}
+        </div>
+        <div class="mb-3">
+            <label class="form-label">{{ form.email.label }}</label>
+            {{ form.email }}
+        </div>
+        <div class="mb-3">
+            <label class="form-label">{{ form.address.label }}</label>
+            {{ form.address }}
+        </div>
+        <div class="mb-3 form-check">
+            {{ form.is_active }}
+            <label class="form-check-label">{{ form.is_active.label }}</label>
+        </div>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <a href="{% url 'clients:client_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

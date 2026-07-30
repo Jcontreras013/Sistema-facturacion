@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Productos más vendidos{% endblock %}
+{% block content %}
+<h2><i class="bi bi-trophy"></i> Productos más vendidos</h2>
+<form class="row g-2 mb-3">
+    <div class="col-md-3">
+        <label class="form-label small">Desde</label>
+        <input type="date" name="from" value="{{ date_from|date:'Y-m-d' }}" class="form-control">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small">Hasta</label>
+        <input type="date" name="to" value="{{ date_to|date:'Y-m-d' }}" class="form-control">
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+        <button class="btn btn-outline-secondary w-100" type="submit">Filtrar</button>
+    </div>
+</form>
+
+<div class="card p-3">
+    <table class="table table-sm">
+        <thead><tr><th>#</th><th>Código</th><th>Producto</th><th>Cantidad vendida</th><th>Ingresos</th></tr></thead>
+        <tbody>
+        {% for row in top %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ row.product__code }}</td>
+                <td>{{ row.product__name }}</td>
+                <td>{{ row.total_quantity }}</td>
+                <td>Q {{ row.total_revenue|floatformat:2 }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="5" class="text-muted">No hay ventas en el período seleccionado.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

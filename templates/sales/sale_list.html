@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Ventas{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-receipt"></i> Historial de ventas</h2>
+    <a href="{% url 'sales:pos' %}" class="btn btn-warning"><i class="bi bi-cash-register"></i> Nueva venta</a>
+</div>
+
+<form class="row g-2 mb-3">
+    <div class="col-md-3">
+        <label class="form-label small">Desde</label>
+        <input type="date" name="from" value="{{ date_from }}" class="form-control">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small">Hasta</label>
+        <input type="date" name="to" value="{{ date_to }}" class="form-control">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small">Cliente</label>
+        <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Nombre del cliente">
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+        <button class="btn btn-outline-secondary w-100" type="submit">Filtrar</button>
+    </div>
+</form>
+
+<div class="card">
+    <table class="table table-hover mb-0">
+        <thead><tr><th>No.</th><th>Fecha</th><th>Cliente</th><th>Cajero</th><th>Pago</th><th>Total</th><th>Estado</th></tr></thead>
+        <tbody>
+        {% for sale in sales %}
+            <tr>
+                <td><a href="{% url 'sales:sale_detail' sale.pk %}">{{ sale.number }}</a></td>
+                <td>{{ sale.created_at|date:"d/m/Y H:i" }}</td>
+                <td>{{ sale.client.name|default:"Consumidor final" }}</td>
+                <td>{{ sale.user|default:"—" }}</td>
+                <td>{{ sale.get_payment_method_display }}</td>
+                <td>Q {{ sale.total|floatformat:2 }}</td>
+                <td>
+                    {% if sale.status == "completada" %}
+                        <span class="badge bg-success">Completada</span>
+                    {% else %}
+                        <span class="badge bg-danger">Anulada</span>
+                    {% endif %}
+                </td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="7" class="text-muted text-center py-4">No se encontraron ventas.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Categorías{% endblock %}
+{% block content %}
+<h2><i class="bi bi-tags"></i> Categorías</h2>
+<div class="row g-4">
+    <div class="col-md-5">
+        <div class="card p-3">
+            <h6>Nueva categoría</h6>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-2">
+                    <label class="form-label">{{ form.name.label }}</label>
+                    {{ form.name }}
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">{{ form.description.label }}</label>
+                    {{ form.description }}
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Agregar</button>
+            </form>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card p-3">
+            <table class="table table-sm">
+                <thead><tr><th>Nombre</th><th>Descripción</th><th></th></tr></thead>
+                <tbody>
+                {% for category in categories %}
+                    <tr>
+                        <td>{{ category.name }}</td>
+                        <td>{{ category.description|default:"—" }}</td>
+                        <td class="text-end">
+                            <form method="post" action="{% url 'inventory:category_delete' category.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <button class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Eliminar esta categoría?');"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="3" class="text-muted">No hay categorías registradas.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

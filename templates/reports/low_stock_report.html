@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Stock bajo{% endblock %}
+{% block content %}
+<h2><i class="bi bi-exclamation-triangle"></i> Productos con stock bajo</h2>
+<div class="card p-3">
+    <table class="table table-sm">
+        <thead><tr><th>Código</th><th>Producto</th><th>Stock actual</th><th>Stock mínimo</th><th>Proveedor</th></tr></thead>
+        <tbody>
+        {% for product in products %}
+            <tr class="table-low-stock">
+                <td>{{ product.code }}</td>
+                <td><a href="{% url 'inventory:product_detail' product.pk %}">{{ product.name }}</a></td>
+                <td>{{ product.stock }}</td>
+                <td>{{ product.min_stock }}</td>
+                <td>{{ product.provider|default:"—" }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="5" class="text-muted">Todo el inventario está en niveles saludables.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Productos{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-box-seam"></i> Productos</h2>
+    <a href="{% url 'inventory:product_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nuevo producto</a>
+</div>
+
+<form class="row g-2 mb-3">
+    <div class="col-md-4">
+        <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Buscar por nombre o código...">
+    </div>
+    <div class="col-md-3">
+        <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" name="low_stock" value="1" id="lowStock" {% if low_stock_only %}checked{% endif %} onchange="this.form.submit()">
+            <label class="form-check-label" for="lowStock">Solo stock bajo</label>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-outline-secondary" type="submit">Buscar</button>
+    </div>
+</form>
+
+<div class="card">
+    <table class="table table-hover mb-0">
+        <thead>
+        <tr><th>Código</th><th>Nombre</th><th>Categoría</th><th>Precio venta</th><th>Stock</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for product in products %}
+            <tr class="{% if product.is_low_stock %}table-low-stock{% endif %}">
+                <td>{{ product.code }}</td>
+                <td><a href="{% url 'inventory:product_detail' product.pk %}">{{ product.name }}</a></td>
+                <td>{{ product.category|default:"—" }}</td>
+                <td>Q {{ product.sale_price|floatformat:2 }}</td>
+                <td>{{ product.stock }} {{ product.get_unit_display }}
+                    {% if product.is_low_stock %}<span class="badge bg-warning text-dark">Bajo</span>{% endif %}
+                </td>
+                <td class="text-end">
+                    <a href="{% url 'inventory:product_update' product.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                    <a href="{% url 'inventory:product_delete' product.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
+                </td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="6" class="text-muted text-center py-4">No hay productos registrados.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

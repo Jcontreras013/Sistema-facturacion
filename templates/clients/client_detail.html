@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ client.name }}{% endblock %}
+{% block content %}
+<h2>{{ client.name }}</h2>
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card p-3">
+            <table class="table table-sm mb-0">
+                <tr><th>Documento</th><td>{{ client.document|default:"—" }}</td></tr>
+                <tr><th>Teléfono</th><td>{{ client.phone|default:"—" }}</td></tr>
+                <tr><th>Correo</th><td>{{ client.email|default:"—" }}</td></tr>
+                <tr><th>Dirección</th><td>{{ client.address|default:"—" }}</td></tr>
+            </table>
+            <a href="{% url 'clients:client_update' client.pk %}" class="btn btn-outline-secondary btn-sm mt-2"><i class="bi bi-pencil"></i> Editar</a>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card p-3">
+            <h6>Historial de compras</h6>
+            <table class="table table-sm">
+                <thead><tr><th>No.</th><th>Fecha</th><th>Total</th><th>Estado</th></tr></thead>
+                <tbody>
+                {% for sale in sales %}
+                    <tr>
+                        <td><a href="{% url 'sales:sale_detail' sale.pk %}">{{ sale.number }}</a></td>
+                        <td>{{ sale.created_at|date:"d/m/Y H:i" }}</td>
+                        <td>Q {{ sale.total|floatformat:2 }}</td>
+                        <td>{{ sale.get_status_display }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="4" class="text-muted">Este cliente aún no tiene compras.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

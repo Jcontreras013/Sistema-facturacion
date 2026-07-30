@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Punto de venta{% endblock %}
+{% block content %}
+<h2><i class="bi bi-cash-register"></i> Punto de venta</h2>
+
+<div class="row g-4">
+    <div class="col-md-7">
+        <input type="text" id="searchBox" class="form-control mb-3" placeholder="Buscar producto por nombre o código...">
+        <div id="productGrid" class="row g-2" style="max-height: 65vh; overflow-y: auto;"></div>
+    </div>
+
+    <div class="col-md-5">
+        <form method="post" id="saleForm">
+            {% csrf_token %}
+            <input type="hidden" name="cart_data" id="cartData">
+
+            <div class="card p-3 mb-3">
+                <label class="form-label">Cliente</label>
+                <select name="client_id" class="form-select mb-2">
+                    <option value="">Consumidor final</option>
+                    {% for client in clients %}
+                        <option value="{{ client.pk }}">{{ client.name }}</option>
+                    {% endfor %}
+                </select>
+                <label class="form-label">Forma de pago</label>
+                <select name="payment_method" class="form-select mb-2">
+                    {% for value, label in payment_methods %}
+                        <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <label class="form-label">Notas</label>
+                <input type="text" name="notes" class="form-control">
+            </div>
+
+            <div class="card p-3">
+                <h6>Carrito</h6>
+                <table class="table table-sm" id="cartTable">
+                    <thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subt.</th><th></th></tr></thead>
+                    <tbody id="cartBody"></tbody>
+                </table>
+                <div class="d-flex justify-content-between"><span>Subtotal</span><strong id="cartSubtotal">Q 0.00</strong></div>
+                <div class="d-flex justify-content-between"><span>Impuesto (12%)</span><strong id="cartTax">Q 0.00</strong></div>
+                <div class="d-flex justify-content-between fs-5"><span>Total</span><strong id="cartTotal">Q 0.00</strong></div>
+                <button type="submit" class="btn btn-success btn-lg mt-3" id="checkoutBtn" disabled>
+                    <i class="bi bi-check-circle"></i> Cobrar venta
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const PRODUCTS = {{ products_json|safe }};
+const TAX_RATE = 0.12;
+let cart = [];
+
+function renderProducts(filter) {
+    const grid = document.getElementById('productGrid');
+    grid.innerHTML = '';
+    const term = (filter || '').toLowerCase();
+    PRODUCTS.filter(p => p.name.toLowerCase().includes(term) || p.code.toLowerCase().includes(term))
+        .forEach(p => {
+            const col = document.createElement('div');
+            col.className = 'col-6 col-lg-4';
+            col.innerHTML = `
+                <div class="card pos-product-card p-2 h-100" data-id="${p.id}">
+                    <div class="fw-bold">${p.name}</div>
+                    <div class="text-muted small">${p.code}</div>
+                    <div class="text-success">Q ${parseFloat(p.price).toFixed(2)}</div>
+                    <div class="small">Stock: ${p.stock} ${p.unit}</div>
+                </div>`;
+            col.querySelector('.pos-product-card').addEventListener('click', () => addToCart(p));
+            grid.appendChild(col);
+        });
+}
+
+function addToCart(product) {
+    const existing = cart.find(item => item.id === product.id);
+    if (existing) {
+        if (existing.quantity < parseFloat(product.stock)) {
+            existing.quantity += 1;
+        }
+    } else {
+        cart.push({ id: product.id, name: product.name, price: parseFloat(product.price), stock: parseFloat(product.stock), quantity: 1 });
+    }
+    renderCart();
+}
+
+function updateQuantity(id, quantity) {
+    const item = cart.find(i => i.id === id);
+    if (!item) return;
+    quantity = Math.max(0, Math.min(quantity, item.stock));
+    item.quantity = quantity;
+    if (item.quantity === 0) {
+        cart = cart.filter(i => i.id !== id);
+    }
+    renderCart();
+}
+
+function removeFromCart(id) {
+    cart = cart.filter(i => i.id !== id);
+    renderCart();
+}
+
+function renderCart() {
+    const body = document.getElementById('cartBody');
+    body.innerHTML = '';
+    let subtotal = 0;
+    cart.forEach(item => {
+        const lineSubtotal = item.price * item.quantity;
+        subtotal += lineSubtotal;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${item.name}</td>
+            <td><input type="number" min="0" step="1" value="${item.quantity}" class="form-control form-control-sm" style="width:70px" data-id="${item.id}"></td>
+            <td>Q ${item.price.toFixed(2)}</td>
+            <td>Q ${lineSubtotal.toFixed(2)}</td>
+            <td><button type="button" class="btn btn-sm btn-outline-danger" data-remove="${item.id}"><i class="bi bi-x"></i></button></td>
+        `;
+        body.appendChild(row);
+    });
+
+    body.querySelectorAll('input[data-id]').forEach(input => {
+        input.addEventListener('change', (e) => {
+            updateQuantity(parseInt(e.target.dataset.id), parseFloat(e.target.value || '0'));
+        });
+    });
+    body.querySelectorAll('button[data-remove]').forEach(btn => {
+        btn.addEventListener('click', (e) => removeFromCart(parseInt(e.currentTarget.dataset.remove)));
+    });
+
+    const tax = subtotal * TAX_RATE;
+    const total = subtotal + tax;
+    document.getElementById('cartSubtotal').textContent = 'Q ' + subtotal.toFixed(2);
+    document.getElementById('cartTax').textContent = 'Q ' + tax.toFixed(2);
+    document.getElementById('cartTotal').textContent = 'Q ' + total.toFixed(2);
+    document.getElementById('checkoutBtn').disabled = cart.length === 0;
+}
+
+document.getElementById('searchBox').addEventListener('input', (e) => renderProducts(e.target.value));
+document.getElementById('saleForm').addEventListener('submit', () => {
+    document.getElementById('cartData').value = JSON.stringify(cart.map(i => ({ id: i.id, quantity: i.quantity })));
+});
+
+renderProducts('');
+renderCart();
+</script>
+{% endblock %}

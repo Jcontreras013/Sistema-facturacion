@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<h2>{{ title }}</h2>
+<div class="card p-4" style="max-width: 700px;">
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">{{ form.code.label }}</label>
+                {{ form.code }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.name.label }}</label>
+                {{ form.name }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.category.label }}</label>
+                {{ form.category }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.provider.label }}</label>
+                {{ form.provider }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.unit.label }}</label>
+                {{ form.unit }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.purchase_price.label }}</label>
+                {{ form.purchase_price }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.sale_price.label }}</label>
+                {{ form.sale_price }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.stock.label }}</label>
+                {{ form.stock }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.min_stock.label }}</label>
+                {{ form.min_stock }}
+            </div>
+            <div class="col-12 form-check">
+                {{ form.is_active }}
+                <label class="form-check-label">{{ form.is_active.label }}</label>
+            </div>
+        </div>
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a href="{% url 'inventory:product_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

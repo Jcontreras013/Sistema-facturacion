@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Panel{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-speedometer2"></i> Panel principal</h2>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card p-3 bg-primary text-white">
+            <div class="small">Ventas de hoy</div>
+            <div class="fs-3 fw-bold">Q {{ today_total|floatformat:2 }}</div>
+            <div class="small">{{ today_sales_count }} factura(s)</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card p-3 bg-success text-white">
+            <div class="small">Ventas del mes</div>
+            <div class="fs-3 fw-bold">Q {{ month_total|floatformat:2 }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card p-3 bg-info text-white">
+            <div class="small">Productos activos</div>
+            <div class="fs-3 fw-bold">{{ total_products }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card p-3 {% if low_stock_count %}bg-warning{% else %}bg-secondary{% endif %} text-white">
+            <div class="small">Alertas de stock bajo</div>
+            <div class="fs-3 fw-bold">{{ low_stock_count }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="mb-4">
+    <a href="{% url 'sales:pos' %}" class="btn btn-warning btn-lg"><i class="bi bi-cash-register"></i> Nueva venta</a>
+    <a href="{% url 'inventory:product_create' %}" class="btn btn-outline-primary btn-lg"><i class="bi bi-box-seam"></i> Nuevo producto</a>
+    <a href="{% url 'clients:client_create' %}" class="btn btn-outline-primary btn-lg"><i class="bi bi-person-plus"></i> Nuevo cliente</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h5>Últimas ventas</h5>
+            <table class="table table-sm">
+                <thead><tr><th>No.</th><th>Cliente</th><th>Total</th><th></th></tr></thead>
+                <tbody>
+                {% for sale in recent_sales %}
+                    <tr>
+                        <td>{{ sale.number }}</td>
+                        <td>{{ sale.client.name|default:"Consumidor final" }}</td>
+                        <td>Q {{ sale.total|floatformat:2 }}</td>
+                        <td><a href="{% url 'sales:sale_detail' sale.pk %}" class="btn btn-sm btn-outline-secondary">Ver</a></td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="4" class="text-muted">Aún no hay ventas registradas.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h5>Productos con stock bajo</h5>
+            <table class="table table-sm">
+                <thead><tr><th>Producto</th><th>Stock</th><th>Mínimo</th></tr></thead>
+                <tbody>
+                {% for product in low_stock_products %}
+                    <tr class="table-low-stock">
+                        <td>{{ product.name }}</td>
+                        <td>{{ product.stock }}</td>
+                        <td>{{ product.min_stock }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="3" class="text-muted">Todo el inventario está en niveles saludables.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

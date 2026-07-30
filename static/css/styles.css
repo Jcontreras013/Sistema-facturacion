@@ -1,0 +1,37 @@
+body {
+    background-color: #f4f6f9;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card {
+    border-radius: 0.75rem;
+}
+
+.table-low-stock {
+    background-color: #fff3cd !important;
+}
+
+.pos-product-card {
+    cursor: pointer;
+    transition: transform 0.1s ease-in-out;
+}
+
+.pos-product-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+.invoice-box {
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+@media print {
+    nav, .no-print {
+        display: none !important;
+    }
+}

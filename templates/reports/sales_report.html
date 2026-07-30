@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Reporte de ventas{% endblock %}
+{% block content %}
+<h2><i class="bi bi-bar-chart"></i> Ventas por período</h2>
+<form class="row g-2 mb-3">
+    <div class="col-md-3">
+        <label class="form-label small">Desde</label>
+        <input type="date" name="from" value="{{ date_from|date:'Y-m-d' }}" class="form-control">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small">Hasta</label>
+        <input type="date" name="to" value="{{ date_to|date:'Y-m-d' }}" class="form-control">
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+        <button class="btn btn-outline-secondary w-100" type="submit">Filtrar</button>
+    </div>
+</form>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card p-3 bg-primary text-white">
+            <div class="small">Facturas</div>
+            <div class="fs-3 fw-bold">{{ sales_count }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card p-3 bg-success text-white">
+            <div class="small">Total vendido</div>
+            <div class="fs-3 fw-bold">Q {{ totals.total_ventas|default:0|floatformat:2 }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card p-3 bg-info text-white">
+            <div class="small">Subtotal</div>
+            <div class="fs-3 fw-bold">Q {{ totals.total_subtotal|default:0|floatformat:2 }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card p-3 bg-secondary text-white">
+            <div class="small">Impuesto</div>
+            <div class="fs-3 fw-bold">Q {{ totals.total_tax|default:0|floatformat:2 }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="card p-3">
+    <h6>Ventas por día</h6>
+    <table class="table table-sm">
+        <thead><tr><th>Fecha</th><th>Total</th></tr></thead>
+        <tbody>
+        {% for row in daily %}
+            <tr><td>{{ row.day|date:"d/m/Y" }}</td><td>Q {{ row.total|floatformat:2 }}</td></tr>
+        {% empty %}
+            <tr><td colspan="2" class="text-muted">No hay ventas en el período seleccionado.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
