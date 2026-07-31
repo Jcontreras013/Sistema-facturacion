@@ -2,15 +2,17 @@ import datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
-from django.shortcuts import redirect, render
+from django.contrib.auth.models import User
+from django.db.models import Q, Sum
+from django.shortcuts import get_object_or_404, redirect, render
 
 from inventory.models import Product
 from sales.models import CashSession, Sale
 
-from .forms import CompanyForm
-from .models import Company
-from .permissions import admin_required
+from .audit import log_action
+from .forms import CompanyForm, UserCreateForm, UserUpdateForm
+from .models import AuditLog, Company
+from .permissions import admin_required, is_admin
 
 
 @login_required
@@ -56,8 +58,101 @@ def company_settings(request):
         form = CompanyForm(request.POST, instance=company)
         if form.is_valid():
             form.save()
+            log_action(request.user, "updated", company)
             messages.success(request, "Configuración del negocio actualizada.")
             return redirect("core:company_settings")
     else:
         form = CompanyForm(instance=company)
     return render(request, "core/company_settings.html", {"form": form, "company": company})
+
+
+@admin_required
+def user_list(request):
+    users = User.objects.all().order_by("username")
+    return render(request, "core/user_list.html", {"users": users})
+
+
+@admin_required
+def user_create(request):
+    if request.method == "POST":
+        form = UserCreateForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            log_action(request.user, "created", user, extra=f"Rol: {form.cleaned_data['role']}")
+            messages.success(request, f"Usuario '{user.username}' creado correctamente.")
+            return redirect("core:user_list")
+    else:
+        form = UserCreateForm()
+    return render(request, "core/user_form.html", {"form": form, "title": "Nuevo usuario"})
+
+
+@admin_required
+def user_update(request, pk):
+    user = get_object_or_404(User, pk=pk)
+    current_role = "Administrador" if is_admin(user) else "Cajero"
+    if request.method == "POST":
+        form = UserUpdateForm(request.POST, instance=user)
+        if form.is_valid():
+            form.save()
+            log_action(request.user, "updated", user, extra=f"Rol: {form.cleaned_data['role']}")
+            messages.success(request, f"Usuario '{user.username}' actualizado.")
+            return redirect("core:user_list")
+    else:
+        form = UserUpdateForm(instance=user, initial={"role": "Administrador" if is_admin(user) else "Cajero"})
+    return render(
+        request, "core/user_form.html", {"form": form, "title": f"Editar usuario: {user.username}"}
+    )
+
+
+@admin_required
+def user_delete(request, pk):
+    user = get_object_or_404(User, pk=pk)
+    if request.method == "POST":
+        if user.pk == request.user.pk:
+            messages.error(request, "No puedes eliminar tu propio usuario.")
+            return redirect("core:user_list")
+        remaining_admins = (
+            User.objects.exclude(pk=user.pk)
+            .filter(Q(is_superuser=True) | Q(groups__name="Administrador"))
+            .distinct()
+            .count()
+        )
+        if is_admin(user) and remaining_admins == 0:
+            messages.error(request, "No puedes eliminar al único administrador del sistema.")
+            return redirect("core:user_list")
+        username = user.username
+        log_action(request.user, "deleted", user)
+        user.delete()
+        messages.success(request, f"Usuario '{username}' eliminado.")
+        return redirect("core:user_list")
+    return render(request, "core/user_confirm_delete.html", {"user_obj": user})
+
+
+@admin_required
+def audit_log_list(request):
+    logs = AuditLog.objects.select_related("user").all()
+
+    action = request.GET.get("action", "")
+    model_name = request.GET.get("model", "")
+    if action:
+        logs = logs.filter(action=action)
+    if model_name:
+        logs = logs.filter(model_name=model_name)
+
+    model_choices = (
+        AuditLog.objects.order_by("model_name").values_list("model_name", flat=True).distinct()
+    )
+
+    logs = logs[:300]
+
+    return render(
+        request,
+        "core/audit_log_list.html",
+        {
+            "logs": logs,
+            "action": action,
+            "model_name": model_name,
+            "model_choices": model_choices,
+            "action_choices": AuditLog.ACTION_CHOICES,
+        },
+    )

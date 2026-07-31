@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Eliminar nota de crédito{% endblock %}
+{% block content %}
+<h2>Eliminar nota de crédito</h2>
+<div class="card p-4" style="max-width: 550px;">
+    <p>¿Seguro que deseas eliminar la nota de crédito <strong>{{ credit_note.number }}</strong>?</p>
+    <div class="alert alert-warning">El stock que esta nota había devuelto será revertido (vuelve a salir del inventario).</div>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+        <a href="{% url 'sales:credit_note_detail' credit_note.pk %}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

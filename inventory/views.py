@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
+from core.audit import log_action
 from core.permissions import admin_required
 
 from .forms import CategoryForm, ProductForm, ProviderForm, StockMovementForm
@@ -31,6 +32,7 @@ def product_create(request):
         form = ProductForm(request.POST)
         if form.is_valid():
             product = form.save()
+            log_action(request.user, "created", product)
             messages.success(request, f"Producto '{product.name}' creado correctamente.")
             return redirect("inventory:product_list")
     else:
@@ -45,6 +47,7 @@ def product_update(request, pk):
         form = ProductForm(request.POST, instance=product)
         if form.is_valid():
             form.save()
+            log_action(request.user, "updated", product)
             messages.success(request, f"Producto '{product.name}' actualizado.")
             return redirect("inventory:product_list")
     else:
@@ -59,6 +62,7 @@ def product_delete(request, pk):
     product = get_object_or_404(Product, pk=pk)
     if request.method == "POST":
         name = product.name
+        log_action(request.user, "deleted", product)
         product.delete()
         messages.success(request, f"Producto '{name}' eliminado.")
         return redirect("inventory:product_list")
@@ -76,6 +80,7 @@ def product_detail(request, pk):
             movement.product = product
             movement.user = request.user
             movement.save()
+            log_action(request.user, "created", movement, extra=f"Producto: {product.name}")
             messages.success(request, "Movimiento de inventario registrado.")
             return redirect("inventory:product_detail", pk=product.pk)
     else:
@@ -93,7 +98,8 @@ def category_list(request):
     if request.method == "POST":
         form = CategoryForm(request.POST)
         if form.is_valid():
-            form.save()
+            category = form.save()
+            log_action(request.user, "created", category)
             messages.success(request, "Categoría creada.")
             return redirect("inventory:category_list")
     else:
@@ -105,6 +111,7 @@ def category_list(request):
 def category_delete(request, pk):
     category = get_object_or_404(Category, pk=pk)
     if request.method == "POST":
+        log_action(request.user, "deleted", category)
         category.delete()
         messages.success(request, "Categoría eliminada.")
     return redirect("inventory:category_list")
@@ -121,7 +128,8 @@ def provider_create(request):
     if request.method == "POST":
         form = ProviderForm(request.POST)
         if form.is_valid():
-            form.save()
+            provider = form.save()
+            log_action(request.user, "created", provider)
             messages.success(request, "Proveedor creado correctamente.")
             return redirect("inventory:provider_list")
     else:
@@ -136,6 +144,7 @@ def provider_update(request, pk):
         form = ProviderForm(request.POST, instance=provider)
         if form.is_valid():
             form.save()
+            log_action(request.user, "updated", provider)
             messages.success(request, "Proveedor actualizado.")
             return redirect("inventory:provider_list")
     else:
@@ -149,6 +158,7 @@ def provider_update(request, pk):
 def provider_delete(request, pk):
     provider = get_object_or_404(Provider, pk=pk)
     if request.method == "POST":
+        log_action(request.user, "deleted", provider)
         provider.delete()
         messages.success(request, "Proveedor eliminado.")
         return redirect("inventory:provider_list")

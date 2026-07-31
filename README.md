@@ -13,6 +13,9 @@ Aplicación web construida con Django para administrar un mini market: punto de 
 - **Clientes y proveedores:** administración (CRUD) de ambos, historial de compras por cliente, RTN/identidad del cliente.
 - **Ventas:** historial con filtros por fecha y cliente, detalle de factura imprimible, anulación de ventas (solo administradores).
 - **Roles:** Administrador (todo) y Cajero (POS, ventas, clientes, consulta de productos) — los reportes, configuración del negocio, categorías, proveedores y edición de productos son solo para administradores.
+- **Gestión de usuarios (solo administradores):** crear, editar rol/contraseña y eliminar usuarios desde el panel (Admin → Usuarios).
+- **Eliminación de registros (solo administradores):** además del CRUD normal de productos/categorías/proveedores/clientes, el admin puede eliminar ventas/facturas, notas de crédito y sesiones de caja, con las restauraciones de stock correspondientes (eliminar una venta completada restituye el stock; eliminar una nota de crédito revierte la devolución). No se puede eliminar una venta que ya tiene notas de crédito asociadas sin borrar esas notas primero.
+- **Bitácora de auditoría (solo administradores):** registro de quién creó, modificó o eliminó cada producto, cliente, venta, nota de crédito, sesión de caja o usuario, con fecha y hora (Admin → Bitácora de auditoría).
 - **Reportes (solo administradores):** ventas por período, productos más vendidos, ganancias, stock bajo, productos por vencer, ISV cobrado por tasa (para la declaración ante el SAR), flujo de caja.
 
 ## Requisitos
@@ -77,6 +80,7 @@ Notas:
 
 ## Notas
 
+- **Eliminar una factura ya emitida rompe la secuencia correlativa autorizada por el CAI y normalmente no es válido ante el SAR** — lo correcto fiscalmente es anular (opción ya disponible), no eliminar. La opción de eliminar existe para corregir errores de captura reales, pero úsala con criterio.
 - El régimen CFE (Factura Electrónica) usa por ahora una numeración interna simple; la integración real con el webservice del SAR para timbrado electrónico **no está implementada** — es un desarrollo aparte que requiere las especificaciones técnicas del SAR y el certificado/credenciales del comercio.
 - La base de datos por defecto es SQLite (`db.sqlite3`), ideal para desarrollo. En producción (Render) se usa PostgreSQL automáticamente vía `DATABASE_URL`.
 - Pendiente para una próxima fase: órdenes de compra y cuentas por pagar a proveedores, crédito/fiado a clientes, modo offline con sincronización, e integración con hardware (impresora térmica, cajón de dinero, báscula).

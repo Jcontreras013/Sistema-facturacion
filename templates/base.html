@@ -48,6 +48,8 @@
                     <ul class="dropdown-menu dropdown-menu-dark">
                         <li><a class="dropdown-item" href="{% url 'core:company_settings' %}">Configuración del negocio</a></li>
                         <li><a class="dropdown-item" href="{% url 'sales:cash_session_list' %}">Historial de caja</a></li>
+                        <li><a class="dropdown-item" href="{% url 'core:user_list' %}">Usuarios</a></li>
+                        <li><a class="dropdown-item" href="{% url 'core:audit_log_list' %}">Bitácora de auditoría</a></li>
                     </ul>
                 </li>
                 {% endif %}

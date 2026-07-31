@@ -66,6 +66,9 @@
             </button>
         </form>
         {% endif %}
+        {% if is_admin %}
+        <a href="{% url 'sales:sale_delete' sale.pk %}" class="btn btn-outline-danger"><i class="bi bi-trash"></i> Eliminar venta</a>
+        {% endif %}
     </div>
 </div>
 
@@ -73,7 +76,7 @@
 <div class="invoice-box card p-4 mt-3 no-print-margin">
     <h6>Notas de crédito relacionadas</h6>
     <table class="table table-sm mb-0">
-        <thead><tr><th>No.</th><th>Fecha</th><th>Motivo</th><th>Total</th></tr></thead>
+        <thead><tr><th>No.</th><th>Fecha</th><th>Motivo</th><th>Total</th><th></th></tr></thead>
         <tbody>
         {% for cn in sale.credit_notes.all %}
             <tr>
@@ -81,6 +84,11 @@
                 <td>{{ cn.created_at|date:"d/m/Y H:i" }}</td>
                 <td>{{ cn.reason }}</td>
                 <td>L {{ cn.total|floatformat:2 }}</td>
+                <td>
+                    {% if is_admin %}
+                    <a href="{% url 'sales:credit_note_delete' cn.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
+                    {% endif %}
+                </td>
             </tr>
         {% endfor %}
         </tbody>

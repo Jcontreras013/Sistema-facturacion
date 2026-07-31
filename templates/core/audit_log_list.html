@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Bitácora de auditoría{% endblock %}
+{% block content %}
+<h2><i class="bi bi-journal-text"></i> Bitácora de auditoría</h2>
+<p class="text-muted">Últimos 300 registros. Quién hizo qué cambio y cuándo.</p>
+
+<form class="row g-2 mb-3">
+    <div class="col-md-3">
+        <select name="action" class="form-select" onchange="this.form.submit()">
+            <option value="">Todas las acciones</option>
+            {% for value, label in action_choices %}
+                <option value="{{ value }}" {% if action == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3">
+        <select name="model" class="form-select" onchange="this.form.submit()">
+            <option value="">Todos los tipos de registro</option>
+            {% for m in model_choices %}
+                <option value="{{ m }}" {% if model_name == m %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</form>
+
+<div class="card">
+    <table class="table table-hover mb-0">
+        <thead><tr><th>Fecha y hora</th><th>Usuario</th><th>Acción</th><th>Tipo</th><th>Registro</th><th>Detalle</th></tr></thead>
+        <tbody>
+        {% for log in logs %}
+            <tr>
+                <td>{{ log.created_at|date:"d/m/Y H:i:s" }}</td>
+                <td>{{ log.user|default:"—" }}</td>
+                <td>
+                    {% if log.action == "created" %}<span class="badge bg-success">{{ log.get_action_display }}</span>
+                    {% elif log.action == "updated" %}<span class="badge bg-warning text-dark">{{ log.get_action_display }}</span>
+                    {% else %}<span class="badge bg-danger">{{ log.get_action_display }}</span>{% endif %}
+                </td>
+                <td>{{ log.model_name }}</td>
+                <td>{{ log.object_repr }}</td>
+                <td>{{ log.extra|default:"—" }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="6" class="text-muted text-center py-4">No hay registros en la bitácora todavía.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

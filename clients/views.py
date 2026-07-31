@@ -3,6 +3,8 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
+from core.audit import log_action
+
 from .forms import ClientForm
 from .models import Client
 
@@ -29,6 +31,7 @@ def client_create(request):
         form = ClientForm(request.POST)
         if form.is_valid():
             client = form.save()
+            log_action(request.user, "created", client)
             messages.success(request, f"Cliente '{client.name}' creado correctamente.")
             return redirect("clients:client_list")
     else:
@@ -43,6 +46,7 @@ def client_update(request, pk):
         form = ClientForm(request.POST, instance=client)
         if form.is_valid():
             form.save()
+            log_action(request.user, "updated", client)
             messages.success(request, "Cliente actualizado.")
             return redirect("clients:client_list")
     else:
@@ -55,6 +59,7 @@ def client_delete(request, pk):
     client = get_object_or_404(Client, pk=pk)
     if request.method == "POST":
         name = client.name
+        log_action(request.user, "deleted", client)
         client.delete()
         messages.success(request, f"Cliente '{name}' eliminado.")
         return redirect("clients:client_list")

@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 
@@ -85,3 +86,29 @@ class Company(models.Model):
         self.next_correlative += 1
         self.save(update_fields=["next_correlative"])
         return number
+
+
+class AuditLog(models.Model):
+    ACTION_CHOICES = [
+        ("created", "Creó"),
+        ("updated", "Modificó"),
+        ("deleted", "Eliminó"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Usuario", on_delete=models.SET_NULL, null=True, related_name="audit_logs"
+    )
+    action = models.CharField("Acción", max_length=10, choices=ACTION_CHOICES)
+    model_name = models.CharField("Tipo de registro", max_length=100)
+    object_repr = models.CharField("Registro", max_length=255)
+    object_id = models.CharField("ID", max_length=50, blank=True)
+    extra = models.CharField("Detalle", max_length=255, blank=True)
+    created_at = models.DateTimeField("Fecha y hora", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Registro de auditoría"
+        verbose_name_plural = "Bitácora de auditoría"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user} {self.get_action_display()} {self.model_name} #{self.object_id}"

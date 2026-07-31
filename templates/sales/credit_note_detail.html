@@ -40,6 +40,9 @@
     <div class="mt-4 no-print">
         <button onclick="window.print()" class="btn btn-outline-secondary"><i class="bi bi-printer"></i> Imprimir</button>
         <a href="{% url 'sales:sale_detail' credit_note.sale.pk %}" class="btn btn-outline-secondary">Volver a la factura</a>
+        {% if is_admin %}
+        <a href="{% url 'sales:credit_note_delete' credit_note.pk %}" class="btn btn-outline-danger"><i class="bi bi-trash"></i> Eliminar</a>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

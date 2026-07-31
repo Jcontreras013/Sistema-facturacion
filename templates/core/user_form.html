@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<h2>{{ title }}</h2>
+<div class="card p-4" style="max-width: 500px;">
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">{{ form.username.label }}</label>
+            {{ form.username }}
+        </div>
+        <div class="mb-3">
+            <label class="form-label">{{ form.email.label }}</label>
+            {{ form.email }}
+        </div>
+        <div class="mb-3">
+            <label class="form-label">{{ form.role.label }}</label>
+            {{ form.role }}
+        </div>
+        <div class="mb-3">
+            <label class="form-label">{{ form.password.label }}</label>
+            {{ form.password }}
+        </div>
+        <div class="mb-3 form-check">
+            {{ form.is_active }}
+            <label class="form-check-label">{{ form.is_active.label }}</label>
+        </div>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <a href="{% url 'core:user_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

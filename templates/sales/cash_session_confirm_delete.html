@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Eliminar sesión de caja{% endblock %}
+{% block content %}
+<h2>Eliminar sesión de caja</h2>
+<div class="card p-4" style="max-width: 550px;">
+    <p>¿Seguro que deseas eliminar la sesión de caja <strong>#{{ session.pk }}</strong> (abierta por {{ session.opened_by }})?</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+        <a href="{% url 'sales:cash_session_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

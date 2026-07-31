@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Eliminar venta{% endblock %}
+{% block content %}
+<h2>Eliminar venta</h2>
+<div class="card p-4" style="max-width: 550px;">
+    <p>¿Seguro que deseas eliminar permanentemente la venta <strong>{{ sale.number }}</strong>?</p>
+    <div class="alert alert-warning">
+        Esta acción borra la factura por completo, incluyendo su lugar en la numeración correlativa.
+        Para operación normal se recomienda <strong>anular</strong> la venta en vez de eliminarla.
+        {% if sale.status == "completada" %}El stock de los productos vendidos será restituido.{% endif %}
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Sí, eliminar definitivamente</button>
+        <a href="{% url 'sales:sale_detail' sale.pk %}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

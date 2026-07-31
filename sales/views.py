@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date
 
 from clients.models import Client
+from core.audit import log_action
 from core.permissions import admin_required
 from inventory.models import Product, StockMovement
 
@@ -76,6 +77,7 @@ def pos(request):
             messages.error(request, str(exc) or "No se pudo completar la venta.")
             return redirect("sales:pos")
 
+        log_action(request.user, "created", sale)
         messages.success(request, f"Venta {sale.number} registrada correctamente.")
         return redirect("sales:sale_detail", pk=sale.pk)
 
@@ -154,8 +156,42 @@ def sale_cancel(request, pk):
                 )
             sale.status = "anulada"
             sale.save(update_fields=["status"])
+        log_action(request.user, "updated", sale, extra="Venta anulada")
         messages.success(request, f"Venta {sale.number} anulada. El stock fue restituido.")
     return redirect("sales:sale_detail", pk=sale.pk)
+
+
+@admin_required
+def sale_delete(request, pk):
+    sale = get_object_or_404(Sale, pk=pk)
+
+    if sale.credit_notes.exists():
+        messages.error(
+            request,
+            "No puedes eliminar esta venta porque tiene notas de crédito asociadas. "
+            "Elimina primero esas notas de crédito.",
+        )
+        return redirect("sales:sale_detail", pk=sale.pk)
+
+    if request.method == "POST":
+        number = sale.number
+        with transaction.atomic():
+            if sale.status == "completada":
+                for item in sale.items.all():
+                    StockMovement.objects.create(
+                        product=item.product,
+                        movement_type="in",
+                        reason_category="otro",
+                        quantity=item.quantity,
+                        reason=f"Eliminación de venta {sale.number}",
+                        user=request.user,
+                    )
+            log_action(request.user, "deleted", sale)
+            sale.delete()
+        messages.success(request, f"Venta {number} eliminada. El stock fue restituido si era necesario.")
+        return redirect("sales:sale_list")
+
+    return render(request, "sales/sale_confirm_delete.html", {"sale": sale})
 
 
 @login_required
@@ -170,7 +206,8 @@ def cash_session_open(request):
             opening_amount = Decimal(request.POST.get("opening_amount", "0"))
         except InvalidOperation:
             opening_amount = Decimal("0")
-        CashSession.objects.create(opened_by=request.user, opening_amount=opening_amount)
+        session = CashSession.objects.create(opened_by=request.user, opening_amount=opening_amount)
+        log_action(request.user, "created", session)
         messages.success(request, "Caja abierta correctamente.")
         return redirect("sales:pos")
 
@@ -193,6 +230,7 @@ def cash_session_close(request):
             counted_amount = Decimal("0")
         notes = request.POST.get("notes", "")
         session.close(counted_amount=counted_amount, closed_by=request.user, notes=notes)
+        log_action(request.user, "updated", session, extra="Caja cerrada")
         messages.success(request, f"Caja cerrada. Diferencia: L {session.difference:.2f}")
         return redirect("sales:cash_session_list")
 
@@ -203,6 +241,17 @@ def cash_session_close(request):
 def cash_session_list(request):
     sessions = CashSession.objects.select_related("opened_by", "closed_by").all()
     return render(request, "sales/cash_session_list.html", {"sessions": sessions})
+
+
+@admin_required
+def cash_session_delete(request, pk):
+    session = get_object_or_404(CashSession, pk=pk)
+    if request.method == "POST":
+        log_action(request.user, "deleted", session)
+        session.delete()
+        messages.success(request, f"Sesión de caja #{pk} eliminada.")
+        return redirect("sales:cash_session_list")
+    return render(request, "sales/cash_session_confirm_delete.html", {"session": session})
 
 
 @login_required
@@ -259,6 +308,7 @@ def credit_note_create(request, sale_pk):
             messages.error(request, str(exc))
             return redirect("sales:sale_detail", pk=sale.pk)
 
+        log_action(request.user, "created", credit_note, extra=reason)
         messages.success(request, f"Nota de crédito {credit_note.number} generada correctamente.")
         return redirect("sales:credit_note_detail", pk=credit_note.pk)
 
@@ -271,3 +321,26 @@ def credit_note_detail(request, pk):
         CreditNote.objects.select_related("sale", "user"), pk=pk
     )
     return render(request, "sales/credit_note_detail.html", {"credit_note": credit_note})
+
+
+@admin_required
+def credit_note_delete(request, pk):
+    credit_note = get_object_or_404(CreditNote, pk=pk)
+    if request.method == "POST":
+        number = credit_note.number
+        sale = credit_note.sale
+        with transaction.atomic():
+            for item in credit_note.items.select_related("sale_item__product"):
+                StockMovement.objects.create(
+                    product=item.sale_item.product,
+                    movement_type="out",
+                    reason_category="otro",
+                    quantity=item.quantity,
+                    reason=f"Eliminación de nota de crédito {credit_note.number}",
+                    user=request.user,
+                )
+            log_action(request.user, "deleted", credit_note)
+            credit_note.delete()
+        messages.success(request, f"Nota de crédito {number} eliminada. El stock devuelto fue revertido.")
+        return redirect("sales:sale_detail", pk=sale.pk)
+    return render(request, "sales/credit_note_confirm_delete.html", {"credit_note": credit_note})
