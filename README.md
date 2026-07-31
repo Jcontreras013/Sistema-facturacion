@@ -4,7 +4,7 @@ Aplicación web construida con Django para administrar un mini market: punto de 
 
 ## Funcionalidades
 
-- **Punto de venta (POS):** búsqueda rápida de productos, carrito interactivo, cálculo automático de impuesto (12%) y total, generación de factura.
+- **Punto de venta (POS):** búsqueda rápida de productos, carrito interactivo, cálculo automático de impuesto (15%) y total, generación de factura.
 - **Inventario:** productos con código, categoría, proveedor, precios de compra/venta y stock; alertas de stock bajo; historial de movimientos (entradas, salidas, ajustes).
 - **Clientes y proveedores:** administración (CRUD) de ambos, historial de compras por cliente.
 - **Ventas:** historial con filtros por fecha y cliente, detalle de factura imprimible, anulación de ventas (restituye stock).
@@ -60,5 +60,5 @@ Notas:
 
 ## Notas
 
-- La tasa de impuesto (12%, IVA de Guatemala) se define en `sales/models.py` (`TAX_RATE`).
+- La tasa de impuesto (15%, ISV de Honduras) se define en `sales/models.py` (`TAX_RATE`).
 - La base de datos por defecto es SQLite (`db.sqlite3`), ideal para un solo punto de venta. Para producción se recomienda migrar a PostgreSQL y ajustar `DEBUG`, `ALLOWED_HOSTS` y `SECRET_KEY`.

@@ -124,7 +124,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "es"
 
-TIME_ZONE = "America/Guatemala"
+TIME_ZONE = "America/Tegucigalpa"
 
 USE_I18N = True
 

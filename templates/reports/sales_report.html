@@ -26,19 +26,19 @@
     <div class="col-md-3">
         <div class="card stat-card p-3 bg-success text-white">
             <div class="small">Total vendido</div>
-            <div class="fs-3 fw-bold">Q {{ totals.total_ventas|default:0|floatformat:2 }}</div>
+            <div class="fs-3 fw-bold">L {{ totals.total_ventas|default:0|floatformat:2 }}</div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="card stat-card p-3 bg-info text-white">
             <div class="small">Subtotal</div>
-            <div class="fs-3 fw-bold">Q {{ totals.total_subtotal|default:0|floatformat:2 }}</div>
+            <div class="fs-3 fw-bold">L {{ totals.total_subtotal|default:0|floatformat:2 }}</div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="card stat-card p-3 bg-secondary text-white">
             <div class="small">Impuesto</div>
-            <div class="fs-3 fw-bold">Q {{ totals.total_tax|default:0|floatformat:2 }}</div>
+            <div class="fs-3 fw-bold">L {{ totals.total_tax|default:0|floatformat:2 }}</div>
         </div>
     </div>
 </div>
@@ -49,7 +49,7 @@
         <thead><tr><th>Fecha</th><th>Total</th></tr></thead>
         <tbody>
         {% for row in daily %}
-            <tr><td>{{ row.day|date:"d/m/Y" }}</td><td>Q {{ row.total|floatformat:2 }}</td></tr>
+            <tr><td>{{ row.day|date:"d/m/Y" }}</td><td>L {{ row.total|floatformat:2 }}</td></tr>
         {% empty %}
             <tr><td colspan="2" class="text-muted">No hay ventas en el período seleccionado.</td></tr>
         {% endfor %}

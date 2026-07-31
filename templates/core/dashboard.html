@@ -7,14 +7,14 @@
     <div class="col-md-3">
         <div class="card stat-card p-3 bg-primary text-white">
             <div class="small">Ventas de hoy</div>
-            <div class="fs-3 fw-bold">Q {{ today_total|floatformat:2 }}</div>
+            <div class="fs-3 fw-bold">L {{ today_total|floatformat:2 }}</div>
             <div class="small">{{ today_sales_count }} factura(s)</div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="card stat-card p-3 bg-success text-white">
             <div class="small">Ventas del mes</div>
-            <div class="fs-3 fw-bold">Q {{ month_total|floatformat:2 }}</div>
+            <div class="fs-3 fw-bold">L {{ month_total|floatformat:2 }}</div>
         </div>
     </div>
     <div class="col-md-3">
@@ -48,7 +48,7 @@
                     <tr>
                         <td>{{ sale.number }}</td>
                         <td>{{ sale.client.name|default:"Consumidor final" }}</td>
-                        <td>Q {{ sale.total|floatformat:2 }}</td>
+                        <td>L {{ sale.total|floatformat:2 }}</td>
                         <td><a href="{% url 'sales:sale_detail' sale.pk %}" class="btn btn-sm btn-outline-secondary">Ver</a></td>
                     </tr>
                 {% empty %}

@@ -24,7 +24,7 @@
                     <tr>
                         <td><a href="{% url 'sales:sale_detail' sale.pk %}">{{ sale.number }}</a></td>
                         <td>{{ sale.created_at|date:"d/m/Y H:i" }}</td>
-                        <td>Q {{ sale.total|floatformat:2 }}</td>
+                        <td>L {{ sale.total|floatformat:2 }}</td>
                         <td>{{ sale.get_status_display }}</td>
                     </tr>
                 {% empty %}

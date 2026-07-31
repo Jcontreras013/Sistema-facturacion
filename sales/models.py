@@ -7,7 +7,7 @@ from django.urls import reverse
 from clients.models import Client
 from inventory.models import Product
 
-TAX_RATE = Decimal("0.12")
+TAX_RATE = Decimal("0.15")
 
 
 class Sale(models.Model):

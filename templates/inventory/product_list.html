@@ -32,7 +32,7 @@
                 <td>{{ product.code }}</td>
                 <td><a href="{% url 'inventory:product_detail' product.pk %}">{{ product.name }}</a></td>
                 <td>{{ product.category|default:"—" }}</td>
-                <td>Q {{ product.sale_price|floatformat:2 }}</td>
+                <td>L {{ product.sale_price|floatformat:2 }}</td>
                 <td>{{ product.stock }} {{ product.get_unit_display }}
                     {% if product.is_low_stock %}<span class="badge bg-warning text-dark">Bajo</span>{% endif %}
                 </td>

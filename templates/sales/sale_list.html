@@ -35,7 +35,7 @@
                 <td>{{ sale.client.name|default:"Consumidor final" }}</td>
                 <td>{{ sale.user|default:"—" }}</td>
                 <td>{{ sale.get_payment_method_display }}</td>
-                <td>Q {{ sale.total|floatformat:2 }}</td>
+                <td>L {{ sale.total|floatformat:2 }}</td>
                 <td>
                     {% if sale.status == "completada" %}
                         <span class="badge bg-success">Completada</span>
