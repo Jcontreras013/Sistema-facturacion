@@ -1,0 +1,35 @@
+databases:
+  - name: minimarket-db
+    plan: free
+    databaseName: minimarket
+    user: minimarket
+
+services:
+  - type: web
+    name: minimarket-facturacion
+    runtime: python
+    plan: free
+    branch: claude/mini-markets-system-fme1x5
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn config.wsgi:application"
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: "localhost,127.0.0.1"
+      - key: SEED_DEMO
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: minimarket-db
+          property: connectionString
+      - key: DJANGO_SUPERUSER_USERNAME
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false
+      - key: DJANGO_SUPERUSER_EMAIL
+        sync: false

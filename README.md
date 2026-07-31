@@ -30,6 +30,25 @@ python manage.py runserver
 
 Luego visita `http://localhost:8000/` e inicia sesión con el usuario creado.
 
+## Despliegue en Render (gratis)
+
+El repositorio incluye `render.yaml` (Blueprint), `build.sh` y soporte para PostgreSQL/whitenoise, listos para desplegar:
+
+1. Crea una cuenta en [render.com](https://render.com) (no pide tarjeta) e inicia sesión con GitHub.
+2. En el dashboard: **New +** → **Blueprint** → selecciona el repositorio `sistema-facturacion` y la rama `claude/mini-markets-system-fme1x5`.
+3. Render detecta `render.yaml` y crea automáticamente el servicio web (Python/gunicorn) y una base de datos PostgreSQL gratuita, conectados entre sí.
+4. Antes de aplicar, define estas variables de entorno del servicio web (para tu usuario administrador):
+   - `DJANGO_SUPERUSER_USERNAME`
+   - `DJANGO_SUPERUSER_PASSWORD`
+   - `DJANGO_SUPERUSER_EMAIL`
+5. Aplica el Blueprint. Render instalará dependencias, correrá migraciones, creará el superusuario y (si `SEED_DEMO=true`) cargará datos de ejemplo.
+6. Cuando termine el build, Render te da una URL pública `https://<nombre>.onrender.com` — ya funcional.
+
+Notas:
+- El plan free "duerme" el servicio tras ~15 minutos sin tráfico (la primera petición tras dormir tarda unos segundos en responder).
+- La base de datos free de Render expira a los 90 días; para uso real, actualiza a un plan pago cuando estés listo.
+- Puedes desactivar los datos de ejemplo cambiando `SEED_DEMO` a `"false"` en el servicio.
+
 ## Estructura del proyecto
 
 - `config/` – configuración del proyecto Django (settings, urls).
