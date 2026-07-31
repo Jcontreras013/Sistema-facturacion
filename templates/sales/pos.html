@@ -1,11 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Punto de venta{% endblock %}
 {% block content %}
-<h2><i class="bi bi-cash-register"></i> Punto de venta</h2>
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h2><i class="bi bi-cash-register"></i> Punto de venta</h2>
+    <span class="badge bg-success">Caja abierta desde {{ open_session.opened_at|date:"d/m/Y H:i" }}</span>
+</div>
 
 <div class="row g-4">
     <div class="col-md-7">
-        <input type="text" id="searchBox" class="form-control mb-3" placeholder="Buscar producto por nombre o código...">
+        <input type="text" id="searchBox" class="form-control mb-3" placeholder="Buscar o escanear código de barras... (Enter para agregar)" autofocus>
         <div id="productGrid" class="row g-2" style="max-height: 65vh; overflow-y: auto;"></div>
     </div>
 
@@ -39,7 +42,7 @@
                     <tbody id="cartBody"></tbody>
                 </table>
                 <div class="d-flex justify-content-between"><span>Subtotal</span><strong id="cartSubtotal">L 0.00</strong></div>
-                <div class="d-flex justify-content-between"><span>Impuesto (15%)</span><strong id="cartTax">L 0.00</strong></div>
+                <div class="d-flex justify-content-between"><span>Impuesto (ISV)</span><strong id="cartTax">L 0.00</strong></div>
                 <div class="d-flex justify-content-between fs-5"><span>Total</span><strong id="cartTotal">L 0.00</strong></div>
                 <button type="submit" class="btn btn-success btn-lg mt-3" id="checkoutBtn" disabled>
                     <i class="bi bi-check-circle"></i> Cobrar venta
@@ -53,14 +56,13 @@
 {% block extra_js %}
 <script>
 const PRODUCTS = {{ products_json|safe }};
-const TAX_RATE = 0.15;
 let cart = [];
 
 function renderProducts(filter) {
     const grid = document.getElementById('productGrid');
     grid.innerHTML = '';
     const term = (filter || '').toLowerCase();
-    PRODUCTS.filter(p => p.name.toLowerCase().includes(term) || p.code.toLowerCase().includes(term))
+    PRODUCTS.filter(p => p.name.toLowerCase().includes(term) || p.code.toLowerCase().includes(term) || (p.barcode && p.barcode.toLowerCase().includes(term)))
         .forEach(p => {
             const col = document.createElement('div');
             col.className = 'col-6 col-lg-4';
@@ -83,9 +85,27 @@ function addToCart(product) {
             existing.quantity += 1;
         }
     } else {
-        cart.push({ id: product.id, name: product.name, price: parseFloat(product.price), stock: parseFloat(product.stock), quantity: 1 });
+        cart.push({
+            id: product.id,
+            name: product.name,
+            price: parseFloat(product.price),
+            taxRate: parseFloat(product.tax_rate),
+            stock: parseFloat(product.stock),
+            quantity: 1,
+        });
     }
     renderCart();
+}
+
+function addByBarcodeOrCode(term) {
+    const clean = term.trim().toLowerCase();
+    if (!clean) return false;
+    const match = PRODUCTS.find(p => (p.barcode && p.barcode.toLowerCase() === clean) || p.code.toLowerCase() === clean);
+    if (match) {
+        addToCart(match);
+        return true;
+    }
+    return false;
 }
 
 function updateQuantity(id, quantity) {
@@ -108,9 +128,12 @@ function renderCart() {
     const body = document.getElementById('cartBody');
     body.innerHTML = '';
     let subtotal = 0;
+    let tax = 0;
     cart.forEach(item => {
         const lineSubtotal = item.price * item.quantity;
+        const lineTax = lineSubtotal * (item.taxRate / 100);
         subtotal += lineSubtotal;
+        tax += lineTax;
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${item.name}</td>
@@ -131,7 +154,6 @@ function renderCart() {
         btn.addEventListener('click', (e) => removeFromCart(parseInt(e.currentTarget.dataset.remove)));
     });
 
-    const tax = subtotal * TAX_RATE;
     const total = subtotal + tax;
     document.getElementById('cartSubtotal').textContent = 'L ' + subtotal.toFixed(2);
     document.getElementById('cartTax').textContent = 'L ' + tax.toFixed(2);
@@ -139,7 +161,18 @@ function renderCart() {
     document.getElementById('checkoutBtn').disabled = cart.length === 0;
 }
 
-document.getElementById('searchBox').addEventListener('input', (e) => renderProducts(e.target.value));
+const searchBox = document.getElementById('searchBox');
+searchBox.addEventListener('input', (e) => renderProducts(e.target.value));
+searchBox.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        if (addByBarcodeOrCode(searchBox.value)) {
+            searchBox.value = '';
+            renderProducts('');
+        }
+    }
+});
+
 document.getElementById('saleForm').addEventListener('submit', () => {
     document.getElementById('cartData').value = JSON.stringify(cart.map(i => ({ id: i.id, quantity: i.quantity })));
 });

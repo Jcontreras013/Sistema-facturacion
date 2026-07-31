@@ -3,6 +3,12 @@
 {% block content %}
 <h2 class="mb-4"><i class="bi bi-speedometer2"></i> Panel principal</h2>
 
+{% if open_session %}
+    <div class="alert alert-success">Caja abierta desde {{ open_session.opened_at|date:"d/m/Y H:i" }} por {{ open_session.opened_by }}. <a href="{% url 'sales:cash_session_close' %}">Cerrar caja</a></div>
+{% else %}
+    <div class="alert alert-warning">No hay una caja abierta. <a href="{% url 'sales:cash_session_open' %}">Abrir caja</a> para poder vender.</div>
+{% endif %}
+
 <div class="row g-3 mb-4">
     <div class="col-md-3">
         <div class="card stat-card p-3 bg-primary text-white">
@@ -31,9 +37,16 @@
     </div>
 </div>
 
+{% if expiring_count %}
+<div class="alert alert-warning">
+    <i class="bi bi-calendar-x"></i> {{ expiring_count }} producto(s) vencido(s) o por vencer en los próximos 30 días.
+    {% if is_admin %}<a href="{% url 'reports:expiring_products_report' %}">Ver detalle</a>{% endif %}
+</div>
+{% endif %}
+
 <div class="mb-4">
     <a href="{% url 'sales:pos' %}" class="btn btn-warning btn-lg"><i class="bi bi-cash-register"></i> Nueva venta</a>
-    <a href="{% url 'inventory:product_create' %}" class="btn btn-outline-primary btn-lg"><i class="bi bi-box-seam"></i> Nuevo producto</a>
+    {% if is_admin %}<a href="{% url 'inventory:product_create' %}" class="btn btn-outline-primary btn-lg"><i class="bi bi-box-seam"></i> Nuevo producto</a>{% endif %}
     <a href="{% url 'clients:client_create' %}" class="btn btn-outline-primary btn-lg"><i class="bi bi-person-plus"></i> Nuevo cliente</a>
 </div>
 

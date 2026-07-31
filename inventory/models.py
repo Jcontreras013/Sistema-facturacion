@@ -1,3 +1,6 @@
+import datetime
+from decimal import Decimal
+
 from django.db import models
 from django.urls import reverse
 
@@ -43,6 +46,7 @@ class Product(models.Model):
     ]
 
     code = models.CharField("Código / SKU", max_length=50, unique=True)
+    barcode = models.CharField("Código de barras", max_length=64, unique=True, null=True, blank=True)
     name = models.CharField("Nombre", max_length=150)
     category = models.ForeignKey(
         Category, verbose_name="Categoría", on_delete=models.SET_NULL, null=True, blank=True, related_name="products"
@@ -53,8 +57,13 @@ class Product(models.Model):
     unit = models.CharField("Unidad de medida", max_length=20, choices=UNIT_CHOICES, default="unidad")
     purchase_price = models.DecimalField("Precio de compra", max_digits=10, decimal_places=2, default=0)
     sale_price = models.DecimalField("Precio de venta", max_digits=10, decimal_places=2, default=0)
+    tax_rate = models.DecimalField(
+        "Tasa de ISV (%)", max_digits=5, decimal_places=2, default=Decimal("15.00"),
+        help_text="15% para la mayoría de productos, 18% para bebidas alcohólicas y tabaco.",
+    )
     stock = models.DecimalField("Existencias", max_digits=10, decimal_places=2, default=0)
     min_stock = models.DecimalField("Stock mínimo", max_digits=10, decimal_places=2, default=5)
+    expiration_date = models.DateField("Fecha de vencimiento", null=True, blank=True)
     is_active = models.BooleanField("Activo", default=True)
     created_at = models.DateTimeField("Creado", auto_now_add=True)
     updated_at = models.DateTimeField("Actualizado", auto_now=True)
@@ -80,6 +89,17 @@ class Product(models.Model):
             return ((self.sale_price - self.purchase_price) / self.purchase_price) * 100
         return 0
 
+    @property
+    def is_expired(self):
+        return bool(self.expiration_date and self.expiration_date < datetime.date.today())
+
+    @property
+    def is_expiring_soon(self):
+        if not self.expiration_date:
+            return False
+        delta = (self.expiration_date - datetime.date.today()).days
+        return 0 <= delta <= 30
+
 
 class StockMovement(models.Model):
     MOVEMENT_TYPES = [
@@ -87,11 +107,23 @@ class StockMovement(models.Model):
         ("out", "Salida"),
         ("adjust", "Ajuste"),
     ]
+    REASON_CATEGORIES = [
+        ("compra", "Compra / reabastecimiento"),
+        ("venta", "Venta"),
+        ("merma", "Merma"),
+        ("dano", "Producto dañado"),
+        ("robo", "Robo / faltante"),
+        ("devolucion", "Devolución de cliente"),
+        ("otro", "Otro"),
+    ]
 
     product = models.ForeignKey(Product, verbose_name="Producto", on_delete=models.CASCADE, related_name="movements")
     movement_type = models.CharField("Tipo", max_length=10, choices=MOVEMENT_TYPES)
+    reason_category = models.CharField(
+        "Categoría de motivo", max_length=15, choices=REASON_CATEGORIES, default="otro"
+    )
     quantity = models.DecimalField("Cantidad", max_digits=10, decimal_places=2)
-    reason = models.CharField("Motivo", max_length=255, blank=True)
+    reason = models.CharField("Detalle del motivo", max_length=255, blank=True)
     user = models.ForeignKey(
         "auth.User", verbose_name="Usuario", on_delete=models.SET_NULL, null=True, blank=True
     )

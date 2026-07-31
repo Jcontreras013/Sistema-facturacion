@@ -7,17 +7,26 @@
     <div class="col-md-5">
         <div class="card p-3">
             <table class="table table-sm mb-0">
+                <tr><th>Código de barras</th><td>{{ product.barcode|default:"—" }}</td></tr>
                 <tr><th>Categoría</th><td>{{ product.category|default:"—" }}</td></tr>
                 <tr><th>Proveedor</th><td>{{ product.provider|default:"—" }}</td></tr>
                 <tr><th>Precio de compra</th><td>L {{ product.purchase_price|floatformat:2 }}</td></tr>
                 <tr><th>Precio de venta</th><td>L {{ product.sale_price|floatformat:2 }}</td></tr>
+                <tr><th>ISV</th><td>{{ product.tax_rate|floatformat:0 }}%</td></tr>
                 <tr><th>Margen</th><td>{{ product.profit_margin|floatformat:1 }}%</td></tr>
                 <tr><th>Existencias</th><td>{{ product.stock }} {{ product.get_unit_display }}
                     {% if product.is_low_stock %}<span class="badge bg-warning text-dark">Stock bajo</span>{% endif %}
                 </td></tr>
                 <tr><th>Stock mínimo</th><td>{{ product.min_stock }}</td></tr>
+                <tr><th>Vencimiento</th><td>
+                    {{ product.expiration_date|date:"d/m/Y"|default:"—" }}
+                    {% if product.is_expired %}<span class="badge bg-danger">Vencido</span>
+                    {% elif product.is_expiring_soon %}<span class="badge bg-warning text-dark">Por vencer</span>{% endif %}
+                </td></tr>
             </table>
+            {% if is_admin %}
             <a href="{% url 'inventory:product_update' product.pk %}" class="btn btn-outline-secondary btn-sm mt-2"><i class="bi bi-pencil"></i> Editar producto</a>
+            {% endif %}
         </div>
 
         <div class="card p-3 mt-3">
@@ -27,6 +36,10 @@
                 <div class="mb-2">
                     <label class="form-label">{{ form.movement_type.label }}</label>
                     {{ form.movement_type }}
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">{{ form.reason_category.label }}</label>
+                    {{ form.reason_category }}
                 </div>
                 <div class="mb-2">
                     <label class="form-label">{{ form.quantity.label }}</label>
@@ -45,18 +58,19 @@
         <div class="card p-3">
             <h6>Historial de movimientos</h6>
             <table class="table table-sm">
-                <thead><tr><th>Fecha</th><th>Tipo</th><th>Cantidad</th><th>Motivo</th><th>Usuario</th></tr></thead>
+                <thead><tr><th>Fecha</th><th>Tipo</th><th>Motivo</th><th>Cantidad</th><th>Detalle</th><th>Usuario</th></tr></thead>
                 <tbody>
                 {% for m in movements %}
                     <tr>
                         <td>{{ m.created_at|date:"d/m/Y H:i" }}</td>
                         <td>{{ m.get_movement_type_display }}</td>
+                        <td>{{ m.get_reason_category_display }}</td>
                         <td>{{ m.quantity }}</td>
                         <td>{{ m.reason|default:"—" }}</td>
                         <td>{{ m.user|default:"—" }}</td>
                     </tr>
                 {% empty %}
-                    <tr><td colspan="5" class="text-muted">Sin movimientos registrados.</td></tr>
+                    <tr><td colspan="6" class="text-muted">Sin movimientos registrados.</td></tr>
                 {% endfor %}
                 </tbody>
             </table>

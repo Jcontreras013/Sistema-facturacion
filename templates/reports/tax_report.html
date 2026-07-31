@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Reporte de impuestos{% endblock %}
+{% block content %}
+<h2><i class="bi bi-receipt-cutoff"></i> ISV cobrado (para declaración SAR)</h2>
+<form class="row g-2 mb-3">
+    <div class="col-md-3">
+        <label class="form-label small">Desde</label>
+        <input type="date" name="from" value="{{ date_from|date:'Y-m-d' }}" class="form-control">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small">Hasta</label>
+        <input type="date" name="to" value="{{ date_to|date:'Y-m-d' }}" class="form-control">
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+        <button class="btn btn-outline-secondary w-100" type="submit">Filtrar</button>
+    </div>
+</form>
+
+<div class="card p-3">
+    <table class="table table-sm">
+        <thead><tr><th>Tasa de ISV</th><th>Base gravable</th><th>Impuesto</th></tr></thead>
+        <tbody>
+        {% for row in rows %}
+            <tr>
+                <td>{{ row.tax_rate|floatformat:0 }}%</td>
+                <td>L {{ row.subtotal|floatformat:2 }}</td>
+                <td>L {{ row.tax_amount|floatformat:2 }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="3" class="text-muted">No hay ventas en el período seleccionado.</td></tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="fw-bold"><td colspan="2">Total ISV</td><td>L {{ total_tax|floatformat:2 }}</td></tr>
+        </tfoot>
+    </table>
+</div>
+{% endblock %}

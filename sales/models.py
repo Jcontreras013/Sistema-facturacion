@@ -5,9 +5,56 @@ from django.db import models
 from django.urls import reverse
 
 from clients.models import Client
+from core.models import Company
 from inventory.models import Product
 
-TAX_RATE = Decimal("0.15")
+
+class CashSession(models.Model):
+    opened_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Abierta por", on_delete=models.SET_NULL, null=True,
+        related_name="cash_sessions_opened",
+    )
+    opened_at = models.DateTimeField("Apertura", auto_now_add=True)
+    opening_amount = models.DecimalField("Monto inicial", max_digits=12, decimal_places=2, default=0)
+
+    closed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Cerrada por", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="cash_sessions_closed",
+    )
+    closed_at = models.DateTimeField("Cierre", null=True, blank=True)
+    counted_amount = models.DecimalField("Monto contado al cierre", max_digits=12, decimal_places=2, null=True, blank=True)
+    expected_amount = models.DecimalField("Monto esperado", max_digits=12, decimal_places=2, null=True, blank=True)
+    difference = models.DecimalField("Diferencia", max_digits=12, decimal_places=2, null=True, blank=True)
+    notes = models.CharField("Notas", max_length=255, blank=True)
+
+    class Meta:
+        verbose_name = "Sesión de caja"
+        verbose_name_plural = "Sesiones de caja"
+        ordering = ["-opened_at"]
+
+    def __str__(self):
+        return f"Caja #{self.pk} ({'abierta' if self.is_open else 'cerrada'})"
+
+    @property
+    def is_open(self):
+        return self.closed_at is None
+
+    def cash_sales_total(self):
+        total = self.sales.filter(status="completada", payment_method="efectivo").aggregate(
+            total=models.Sum("total")
+        )["total"]
+        return total or Decimal("0")
+
+    def close(self, counted_amount, closed_by, notes=""):
+        import django.utils.timezone as timezone
+
+        self.expected_amount = self.opening_amount + self.cash_sales_total()
+        self.counted_amount = counted_amount
+        self.difference = counted_amount - self.expected_amount
+        self.closed_by = closed_by
+        self.closed_at = timezone.now()
+        self.notes = notes
+        self.save()
 
 
 class Sale(models.Model):
@@ -27,6 +74,10 @@ class Sale(models.Model):
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Cajero", on_delete=models.SET_NULL, null=True, related_name="sales"
+    )
+    cash_session = models.ForeignKey(
+        CashSession, verbose_name="Sesión de caja", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="sales",
     )
     payment_method = models.CharField("Forma de pago", max_length=20, choices=PAYMENT_METHODS, default="efectivo")
     status = models.CharField("Estado", max_length=15, choices=STATUS_CHOICES, default="completada")
@@ -49,14 +100,14 @@ class Sale(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.number:
-            last = Sale.objects.order_by("-id").first()
-            next_id = (last.id + 1) if last else 1
-            self.number = f"F-{next_id:06d}"
+            company = Company.load()
+            self.number = company.reserve_next_invoice_number()
         super().save(*args, **kwargs)
 
     def recalculate_totals(self):
-        subtotal = sum((item.subtotal for item in self.items.all()), Decimal("0"))
-        tax = (subtotal * TAX_RATE).quantize(Decimal("0.01"))
+        items = list(self.items.all())
+        subtotal = sum((item.subtotal for item in items), Decimal("0"))
+        tax = sum((item.tax_amount for item in items), Decimal("0")).quantize(Decimal("0.01"))
         self.subtotal = subtotal
         self.tax = tax
         self.total = subtotal + tax
@@ -68,6 +119,7 @@ class SaleItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="sale_items")
     quantity = models.DecimalField("Cantidad", max_digits=10, decimal_places=2)
     unit_price = models.DecimalField("Precio unitario", max_digits=10, decimal_places=2)
+    tax_rate = models.DecimalField("Tasa de ISV (%)", max_digits=5, decimal_places=2, default=Decimal("15.00"))
 
     class Meta:
         verbose_name = "Detalle de venta"
@@ -79,3 +131,74 @@ class SaleItem(models.Model):
     @property
     def subtotal(self):
         return self.quantity * self.unit_price
+
+    @property
+    def tax_amount(self):
+        return self.subtotal * (self.tax_rate / Decimal("100"))
+
+    @property
+    def returned_quantity(self):
+        return sum(
+            (ci.quantity for ci in self.credit_note_items.all()), Decimal("0")
+        )
+
+    @property
+    def returnable_quantity(self):
+        return self.quantity - self.returned_quantity
+
+
+class CreditNote(models.Model):
+    number = models.CharField("No. de nota de crédito", max_length=20, unique=True, blank=True)
+    sale = models.ForeignKey(Sale, verbose_name="Venta original", on_delete=models.PROTECT, related_name="credit_notes")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Registrada por", on_delete=models.SET_NULL, null=True
+    )
+    reason = models.CharField("Motivo", max_length=255)
+    subtotal = models.DecimalField("Subtotal", max_digits=12, decimal_places=2, default=0)
+    tax = models.DecimalField("Impuesto", max_digits=12, decimal_places=2, default=0)
+    total = models.DecimalField("Total", max_digits=12, decimal_places=2, default=0)
+    created_at = models.DateTimeField("Fecha", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Nota de crédito"
+        verbose_name_plural = "Notas de crédito"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.number or f"NC-{self.pk}"
+
+    def save(self, *args, **kwargs):
+        if not self.number:
+            last = CreditNote.objects.order_by("-id").first()
+            next_id = (last.id + 1) if last else 1
+            self.number = f"NC-{next_id:06d}"
+        super().save(*args, **kwargs)
+
+    def recalculate_totals(self):
+        items = list(self.items.all())
+        subtotal = sum((item.subtotal for item in items), Decimal("0"))
+        tax = sum((item.tax_amount for item in items), Decimal("0")).quantize(Decimal("0.01"))
+        self.subtotal = subtotal
+        self.tax = tax
+        self.total = subtotal + tax
+        self.save(update_fields=["subtotal", "tax", "total"])
+
+
+class CreditNoteItem(models.Model):
+    credit_note = models.ForeignKey(CreditNote, on_delete=models.CASCADE, related_name="items")
+    sale_item = models.ForeignKey(SaleItem, on_delete=models.PROTECT, related_name="credit_note_items")
+    quantity = models.DecimalField("Cantidad devuelta", max_digits=10, decimal_places=2)
+    unit_price = models.DecimalField("Precio unitario", max_digits=10, decimal_places=2)
+    tax_rate = models.DecimalField("Tasa de ISV (%)", max_digits=5, decimal_places=2, default=Decimal("15.00"))
+
+    class Meta:
+        verbose_name = "Detalle de nota de crédito"
+        verbose_name_plural = "Detalles de nota de crédito"
+
+    @property
+    def subtotal(self):
+        return self.quantity * self.unit_price
+
+    @property
+    def tax_amount(self):
+        return self.subtotal * (self.tax_rate / Decimal("100"))

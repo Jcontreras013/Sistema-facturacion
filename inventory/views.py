@@ -3,6 +3,8 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
+from core.permissions import admin_required
+
 from .forms import CategoryForm, ProductForm, ProviderForm, StockMovementForm
 from .models import Category, Product, Provider, StockMovement
 
@@ -23,7 +25,7 @@ def product_list(request):
     )
 
 
-@login_required
+@admin_required
 def product_create(request):
     if request.method == "POST":
         form = ProductForm(request.POST)
@@ -36,7 +38,7 @@ def product_create(request):
     return render(request, "inventory/product_form.html", {"form": form, "title": "Nuevo producto"})
 
 
-@login_required
+@admin_required
 def product_update(request, pk):
     product = get_object_or_404(Product, pk=pk)
     if request.method == "POST":
@@ -52,7 +54,7 @@ def product_update(request, pk):
     )
 
 
-@login_required
+@admin_required
 def product_delete(request, pk):
     product = get_object_or_404(Product, pk=pk)
     if request.method == "POST":
@@ -85,7 +87,7 @@ def product_detail(request, pk):
     )
 
 
-@login_required
+@admin_required
 def category_list(request):
     categories = Category.objects.all()
     if request.method == "POST":
@@ -99,7 +101,7 @@ def category_list(request):
     return render(request, "inventory/category_list.html", {"categories": categories, "form": form})
 
 
-@login_required
+@admin_required
 def category_delete(request, pk):
     category = get_object_or_404(Category, pk=pk)
     if request.method == "POST":
@@ -108,13 +110,13 @@ def category_delete(request, pk):
     return redirect("inventory:category_list")
 
 
-@login_required
+@admin_required
 def provider_list(request):
     providers = Provider.objects.all()
     return render(request, "inventory/provider_list.html", {"providers": providers})
 
 
-@login_required
+@admin_required
 def provider_create(request):
     if request.method == "POST":
         form = ProviderForm(request.POST)
@@ -127,7 +129,7 @@ def provider_create(request):
     return render(request, "inventory/provider_form.html", {"form": form, "title": "Nuevo proveedor"})
 
 
-@login_required
+@admin_required
 def provider_update(request, pk):
     provider = get_object_or_404(Provider, pk=pk)
     if request.method == "POST":
@@ -143,7 +145,7 @@ def provider_update(request, pk):
     )
 
 
-@login_required
+@admin_required
 def provider_delete(request, pk):
     provider = get_object_or_404(Provider, pk=pk)
     if request.method == "POST":

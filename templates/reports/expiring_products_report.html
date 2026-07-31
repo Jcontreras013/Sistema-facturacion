@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Productos por vencer{% endblock %}
+{% block content %}
+<h2><i class="bi bi-calendar-x"></i> Productos vencidos o por vencer</h2>
+<div class="card p-3">
+    <table class="table table-sm">
+        <thead><tr><th>Código</th><th>Producto</th><th>Vencimiento</th><th>Estado</th><th>Stock</th></tr></thead>
+        <tbody>
+        {% for product in products %}
+            <tr class="table-low-stock">
+                <td>{{ product.code }}</td>
+                <td><a href="{% url 'inventory:product_detail' product.pk %}">{{ product.name }}</a></td>
+                <td>{{ product.expiration_date|date:"d/m/Y" }}</td>
+                <td>
+                    {% if product.is_expired %}<span class="badge bg-danger">Vencido</span>
+                    {% else %}<span class="badge bg-warning text-dark">Por vencer</span>{% endif %}
+                </td>
+                <td>{{ product.stock }} {{ product.get_unit_display }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="5" class="text-muted">No hay productos vencidos ni próximos a vencer.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

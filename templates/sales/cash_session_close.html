@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Cerrar caja{% endblock %}
+{% block content %}
+<h2><i class="bi bi-safe"></i> Cerrar caja (arqueo)</h2>
+<div class="row g-4">
+    <div class="col-md-5">
+        <div class="card p-3">
+            <table class="table table-sm mb-0">
+                <tr><th>Abierta por</th><td>{{ session.opened_by }}</td></tr>
+                <tr><th>Apertura</th><td>{{ session.opened_at|date:"d/m/Y H:i" }}</td></tr>
+                <tr><th>Monto inicial</th><td>L {{ session.opening_amount|floatformat:2 }}</td></tr>
+                <tr><th>Ventas en efectivo</th><td>L {{ session.cash_sales_total|floatformat:2 }}</td></tr>
+                <tr><th>Monto esperado</th><td><strong>L {{ expected|floatformat:2 }}</strong></td></tr>
+            </table>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card p-4">
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Monto contado en caja</label>
+                    <input type="number" step="0.01" min="0" name="counted_amount" class="form-control" required autofocus>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Notas (opcional)</label>
+                    <input type="text" name="notes" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-danger">Cerrar caja</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

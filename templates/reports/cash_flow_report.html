@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Flujo de caja{% endblock %}
+{% block content %}
+<h2><i class="bi bi-cash-stack"></i> Flujo de caja</h2>
+<form class="row g-2 mb-3">
+    <div class="col-md-3">
+        <label class="form-label small">Desde</label>
+        <input type="date" name="from" value="{{ date_from|date:'Y-m-d' }}" class="form-control">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small">Hasta</label>
+        <input type="date" name="to" value="{{ date_to|date:'Y-m-d' }}" class="form-control">
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+        <button class="btn btn-outline-secondary w-100" type="submit">Filtrar</button>
+    </div>
+</form>
+
+<div class="card p-3">
+    <table class="table table-sm">
+        <thead>
+        <tr><th>#</th><th>Abierta</th><th>Cerrada</th><th>Monto inicial</th><th>Ventas efectivo</th><th>Esperado</th><th>Contado</th><th>Diferencia</th></tr>
+        </thead>
+        <tbody>
+        {% for session in sessions %}
+            <tr>
+                <td>{{ session.pk }}</td>
+                <td>{{ session.opened_at|date:"d/m/Y H:i" }}</td>
+                <td>{% if session.closed_at %}{{ session.closed_at|date:"d/m/Y H:i" }}{% else %}<span class="badge bg-success">Abierta</span>{% endif %}</td>
+                <td>L {{ session.opening_amount|floatformat:2 }}</td>
+                <td>L {{ session.cash_sales_total|floatformat:2 }}</td>
+                <td>{% if session.expected_amount is not None %}L {{ session.expected_amount|floatformat:2 }}{% else %}—{% endif %}</td>
+                <td>{% if session.counted_amount is not None %}L {{ session.counted_amount|floatformat:2 }}{% else %}—{% endif %}</td>
+                <td>{% if session.difference is not None %}L {{ session.difference|floatformat:2 }}{% else %}—{% endif %}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="8" class="text-muted text-center py-4">No hay sesiones de caja en el período seleccionado.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

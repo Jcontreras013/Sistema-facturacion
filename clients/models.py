@@ -4,7 +4,7 @@ from django.urls import reverse
 
 class Client(models.Model):
     name = models.CharField("Nombre completo", max_length=150)
-    document = models.CharField("NIT / DPI", max_length=30, blank=True)
+    document = models.CharField("RTN / No. de Identidad", max_length=30, blank=True)
     phone = models.CharField("Teléfono", max_length=30, blank=True)
     email = models.EmailField("Correo", blank=True)
     address = models.CharField("Dirección", max_length=255, blank=True)

@@ -1,14 +1,19 @@
-# Sistema de Facturación para Mini Markets
+# Sistema de Facturación para Mini Markets (Honduras)
 
-Aplicación web construida con Django para administrar un mini market: punto de venta (POS), inventario, clientes/proveedores y reportes.
+Aplicación web construida con Django para administrar un mini market: punto de venta (POS), inventario, clientes/proveedores, caja y reportes, adaptada al régimen fiscal de Honduras (SAR).
 
 ## Funcionalidades
 
-- **Punto de venta (POS):** búsqueda rápida de productos, carrito interactivo, cálculo automático de impuesto (15%) y total, generación de factura.
-- **Inventario:** productos con código, categoría, proveedor, precios de compra/venta y stock; alertas de stock bajo; historial de movimientos (entradas, salidas, ajustes).
-- **Clientes y proveedores:** administración (CRUD) de ambos, historial de compras por cliente.
-- **Ventas:** historial con filtros por fecha y cliente, detalle de factura imprimible, anulación de ventas (restituye stock).
-- **Reportes:** ventas por período, productos más vendidos, ganancias (ingresos - costo), stock bajo.
+- **Configuración fiscal del negocio:** RTN, régimen de facturación (CAI impreso o CFE electrónico), rango de facturas autorizado, fecha límite de emisión, tasa de ISV por defecto.
+- **Numeración de factura formato Honduras:** `000-001-01-00000001`, con control automático del rango autorizado por el CAI.
+- **Punto de venta (POS):** búsqueda o escaneo de código de barras (Enter agrega el producto), carrito interactivo, ISV diferenciado por producto (15% o 18% para alcohol/tabaco), selección de cliente y forma de pago.
+- **Caja:** apertura y cierre con arqueo (monto esperado vs. contado, diferencia), historial de sesiones.
+- **Notas de crédito:** devoluciones parciales o totales sobre una factura, con restitución automática de stock.
+- **Inventario:** productos con código, código de barras, categoría, proveedor, precios de compra/venta, ISV, stock, fecha de vencimiento; alertas de stock bajo y de productos por vencer; movimientos de inventario con motivo (compra, venta, merma, daño, robo, devolución, otro).
+- **Clientes y proveedores:** administración (CRUD) de ambos, historial de compras por cliente, RTN/identidad del cliente.
+- **Ventas:** historial con filtros por fecha y cliente, detalle de factura imprimible, anulación de ventas (solo administradores).
+- **Roles:** Administrador (todo) y Cajero (POS, ventas, clientes, consulta de productos) — los reportes, configuración del negocio, categorías, proveedores y edición de productos son solo para administradores.
+- **Reportes (solo administradores):** ventas por período, productos más vendidos, ganancias, stock bajo, productos por vencer, ISV cobrado por tasa (para la declaración ante el SAR), flujo de caja.
 
 ## Requisitos
 
@@ -22,13 +27,24 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 python manage.py migrate
-python manage.py createsuperuser
-python manage.py seed_demo   # datos de ejemplo opcionales (categorías, proveedores, productos, clientes)
+python manage.py seed_groups        # crea los grupos "Administrador" y "Cajero"
+python manage.py createsuperuser    # tu usuario administrador
+python manage.py seed_demo          # datos de ejemplo opcionales (empresa, categorías, productos, clientes)
 
 python manage.py runserver
 ```
 
-Luego visita `http://localhost:8000/` e inicia sesión con el usuario creado.
+Luego visita `http://localhost:8000/`, inicia sesión con el usuario creado y entra a **Admin → Configuración del negocio** para poner el RTN, CAI y rango de facturas reales de tu comercio.
+
+Para crear un usuario cajero (sin acceso a reportes/configuración):
+
+```bash
+python manage.py shell -c "
+from django.contrib.auth.models import User, Group
+u = User.objects.create_user('cajero1', password='una-contraseña-segura')
+u.groups.add(Group.objects.get(name='Cajero'))
+"
+```
 
 ## Despliegue en Render (gratis)
 
@@ -41,8 +57,9 @@ El repositorio incluye `render.yaml` (Blueprint), `build.sh` y soporte para Post
    - `DJANGO_SUPERUSER_USERNAME`
    - `DJANGO_SUPERUSER_PASSWORD`
    - `DJANGO_SUPERUSER_EMAIL`
-5. Aplica el Blueprint. Render instalará dependencias, correrá migraciones, creará el superusuario y (si `SEED_DEMO=true`) cargará datos de ejemplo.
+5. Aplica el Blueprint. Render instalará dependencias, correrá migraciones, creará los grupos de roles, el superusuario y (si `SEED_DEMO=true`) cargará datos de ejemplo.
 6. Cuando termine el build, Render te da una URL pública `https://<nombre>.onrender.com` — ya funcional.
+7. Entra a **Admin → Configuración del negocio** y reemplaza los datos de ejemplo con el RTN, CAI y rango de facturas reales del comercio antes de facturar en producción.
 
 Notas:
 - El plan free "duerme" el servicio tras ~15 minutos sin tráfico (la primera petición tras dormir tarda unos segundos en responder).
@@ -52,13 +69,14 @@ Notas:
 ## Estructura del proyecto
 
 - `config/` – configuración del proyecto Django (settings, urls).
-- `core/` – panel principal (dashboard) y comando `seed_demo`.
+- `core/` – panel principal (dashboard), configuración fiscal del negocio (`Company`), roles/permisos, comandos `seed_demo`/`seed_groups`/`ensure_admin`.
 - `inventory/` – categorías, proveedores, productos y movimientos de inventario.
 - `clients/` – clientes.
-- `sales/` – punto de venta, facturas y detalle de ventas.
-- `reports/` – reportes de ventas, productos top, ganancias y stock bajo.
+- `sales/` – punto de venta, caja, facturas, notas de crédito.
+- `reports/` – reportes de ventas, productos top, ganancias, stock bajo, vencimientos, impuestos y flujo de caja.
 
 ## Notas
 
-- La tasa de impuesto (15%, ISV de Honduras) se define en `sales/models.py` (`TAX_RATE`).
-- La base de datos por defecto es SQLite (`db.sqlite3`), ideal para un solo punto de venta. Para producción se recomienda migrar a PostgreSQL y ajustar `DEBUG`, `ALLOWED_HOSTS` y `SECRET_KEY`.
+- El régimen CFE (Factura Electrónica) usa por ahora una numeración interna simple; la integración real con el webservice del SAR para timbrado electrónico **no está implementada** — es un desarrollo aparte que requiere las especificaciones técnicas del SAR y el certificado/credenciales del comercio.
+- La base de datos por defecto es SQLite (`db.sqlite3`), ideal para desarrollo. En producción (Render) se usa PostgreSQL automáticamente vía `DATABASE_URL`.
+- Pendiente para una próxima fase: órdenes de compra y cuentas por pagar a proveedores, crédito/fiado a clientes, modo offline con sincronización, e integración con hardware (impresora térmica, cajón de dinero, báscula).

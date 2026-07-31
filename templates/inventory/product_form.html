@@ -11,6 +11,10 @@
                 {{ form.code }}
             </div>
             <div class="col-md-6">
+                <label class="form-label">{{ form.barcode.label }}</label>
+                {{ form.barcode }}
+            </div>
+            <div class="col-md-12">
                 <label class="form-label">{{ form.name.label }}</label>
                 {{ form.name }}
             </div>
@@ -22,25 +26,34 @@
                 <label class="form-label">{{ form.provider.label }}</label>
                 {{ form.provider }}
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label">{{ form.unit.label }}</label>
                 {{ form.unit }}
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label">{{ form.purchase_price.label }}</label>
                 {{ form.purchase_price }}
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label">{{ form.sale_price.label }}</label>
                 {{ form.sale_price }}
             </div>
-            <div class="col-md-6">
+            <div class="col-md-3">
+                <label class="form-label">{{ form.tax_rate.label }}</label>
+                {{ form.tax_rate }}
+                <small class="text-muted">{{ form.tax_rate.help_text }}</small>
+            </div>
+            <div class="col-md-4">
                 <label class="form-label">{{ form.stock.label }}</label>
                 {{ form.stock }}
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label class="form-label">{{ form.min_stock.label }}</label>
                 {{ form.min_stock }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.expiration_date.label }}</label>
+                {{ form.expiration_date }}
             </div>
             <div class="col-12 form-check">
                 {{ form.is_active }}

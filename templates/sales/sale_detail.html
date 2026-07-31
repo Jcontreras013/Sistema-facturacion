@@ -22,7 +22,7 @@
     <div class="row mb-3">
         <div class="col-md-6">
             <strong>Cliente:</strong> {{ sale.client.name|default:"Consumidor final" }}<br>
-            {% if sale.client %}<strong>Documento:</strong> {{ sale.client.document|default:"—" }}<br>{% endif %}
+            {% if sale.client %}<strong>RTN / Identidad:</strong> {{ sale.client.document|default:"—" }}<br>{% endif %}
         </div>
         <div class="col-md-6 text-md-end">
             <strong>Cajero:</strong> {{ sale.user|default:"—" }}<br>
@@ -31,13 +31,14 @@
     </div>
 
     <table class="table">
-        <thead><tr><th>Producto</th><th>Cantidad</th><th>Precio unit.</th><th class="text-end">Subtotal</th></tr></thead>
+        <thead><tr><th>Producto</th><th>Cantidad</th><th>Precio unit.</th><th>ISV</th><th class="text-end">Subtotal</th></tr></thead>
         <tbody>
         {% for item in sale.items.all %}
             <tr>
                 <td>{{ item.product.name }}</td>
                 <td>{{ item.quantity }}</td>
                 <td>L {{ item.unit_price|floatformat:2 }}</td>
+                <td>{{ item.tax_rate|floatformat:0 }}%</td>
                 <td class="text-end">L {{ item.subtotal|floatformat:2 }}</td>
             </tr>
         {% endfor %}
@@ -57,7 +58,7 @@
     <div class="mt-4 no-print">
         <button onclick="window.print()" class="btn btn-outline-secondary"><i class="bi bi-printer"></i> Imprimir</button>
         <a href="{% url 'sales:sale_list' %}" class="btn btn-outline-secondary">Volver a ventas</a>
-        {% if sale.status == "completada" %}
+        {% if sale.status == "completada" and is_admin %}
         <form method="post" action="{% url 'sales:sale_cancel' sale.pk %}" class="d-inline">
             {% csrf_token %}
             <button type="submit" class="btn btn-outline-danger" onclick="return confirm('¿Anular esta venta? El stock será restituido.');">
@@ -67,4 +68,54 @@
         {% endif %}
     </div>
 </div>
+
+{% if sale.credit_notes.all %}
+<div class="invoice-box card p-4 mt-3 no-print-margin">
+    <h6>Notas de crédito relacionadas</h6>
+    <table class="table table-sm mb-0">
+        <thead><tr><th>No.</th><th>Fecha</th><th>Motivo</th><th>Total</th></tr></thead>
+        <tbody>
+        {% for cn in sale.credit_notes.all %}
+            <tr>
+                <td><a href="{% url 'sales:credit_note_detail' cn.pk %}">{{ cn.number }}</a></td>
+                <td>{{ cn.created_at|date:"d/m/Y H:i" }}</td>
+                <td>{{ cn.reason }}</td>
+                <td>L {{ cn.total|floatformat:2 }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if sale.status == "completada" %}
+<div class="invoice-box card p-4 mt-3 no-print">
+    <h6><i class="bi bi-arrow-return-left"></i> Registrar devolución (nota de crédito)</h6>
+    <form method="post" action="{% url 'sales:credit_note_create' sale.pk %}">
+        {% csrf_token %}
+        <table class="table table-sm">
+            <thead><tr><th>Producto</th><th>Vendido</th><th>Disponible a devolver</th><th>Cantidad a devolver</th></tr></thead>
+            <tbody>
+            {% for item in sale.items.all %}
+                <tr>
+                    <td>{{ item.product.name }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.returnable_quantity }}</td>
+                    <td>
+                        <input type="hidden" name="item_id" value="{{ item.pk }}">
+                        <input type="number" name="quantity" min="0" max="{{ item.returnable_quantity }}" step="0.01"
+                               class="form-control form-control-sm" style="width:100px" {% if item.returnable_quantity <= 0 %}disabled{% endif %}>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <div class="mb-3">
+            <label class="form-label">Motivo de la devolución</label>
+            <input type="text" name="reason" class="form-control" required placeholder="Ej. producto en mal estado, cliente se arrepintió...">
+        </div>
+        <button type="submit" class="btn btn-outline-danger">Generar nota de crédito</button>
+    </form>
+</div>
+{% endif %}
 {% endblock %}

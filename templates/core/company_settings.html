@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Configuración del negocio{% endblock %}
+{% block content %}
+<h2><i class="bi bi-gear"></i> Configuración del negocio</h2>
+<p class="text-muted">Estos datos aparecen en cada factura y controlan la numeración autorizada por el SAR.</p>
+
+<div class="card p-4" style="max-width: 800px;">
+    <form method="post">
+        {% csrf_token %}
+        <h6>Datos generales</h6>
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label">{{ form.business_name.label }}</label>
+                {{ form.business_name }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.trade_name.label }}</label>
+                {{ form.trade_name }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.rtn.label }}</label>
+                {{ form.rtn }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.phone.label }}</label>
+                {{ form.phone }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.email.label }}</label>
+                {{ form.email }}
+            </div>
+            <div class="col-12">
+                <label class="form-label">{{ form.address.label }}</label>
+                {{ form.address }}
+            </div>
+        </div>
+
+        <hr>
+        <h6>Régimen de facturación</h6>
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                <label class="form-label">{{ form.invoice_regime.label }}</label>
+                {{ form.invoice_regime }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.default_isv_rate.label }}</label>
+                {{ form.default_isv_rate }}
+            </div>
+        </div>
+
+        <h6>Datos del CAI (Régimen por Imprenta)</h6>
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label">{{ form.cai_code.label }}</label>
+                {{ form.cai_code }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">{{ form.establishment_code.label }}</label>
+                {{ form.establishment_code }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">{{ form.emission_point_code.label }}</label>
+                {{ form.emission_point_code }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">{{ form.document_type_code.label }}</label>
+                {{ form.document_type_code }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">{{ form.range_start.label }}</label>
+                {{ form.range_start }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">{{ form.range_end.label }}</label>
+                {{ form.range_end }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">{{ form.next_correlative.label }}</label>
+                {{ form.next_correlative }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">{{ form.emission_limit_date.label }}</label>
+                {{ form.emission_limit_date }}
+            </div>
+        </div>
+
+        {% if company.invoice_regime == "cfe" %}
+        <div class="alert alert-warning">
+            El régimen de Factura Electrónica (CFE) todavía usa una numeración interna simple en este sistema;
+            la integración real con el webservice del SAR para timbrado electrónico no está implementada aún.
+        </div>
+        {% endif %}
+
+        <div class="mt-3">
+            <span class="badge bg-info">Facturas restantes en el rango: {{ company.range_remaining }}</span>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

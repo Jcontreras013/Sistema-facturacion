@@ -18,13 +18,16 @@ class ProviderAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("code", "name", "category", "provider", "sale_price", "stock", "min_stock", "is_active")
-    search_fields = ("code", "name")
+    list_display = (
+        "code", "barcode", "name", "category", "provider", "sale_price", "tax_rate",
+        "stock", "min_stock", "expiration_date", "is_active",
+    )
+    search_fields = ("code", "barcode", "name")
     list_filter = ("category", "provider", "is_active")
 
 
 @admin.register(StockMovement)
 class StockMovementAdmin(admin.ModelAdmin):
-    list_display = ("product", "movement_type", "quantity", "user", "created_at")
-    list_filter = ("movement_type",)
+    list_display = ("product", "movement_type", "reason_category", "quantity", "user", "created_at")
+    list_filter = ("movement_type", "reason_category")
     date_hierarchy = "created_at"

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Historial de caja{% endblock %}
+{% block content %}
+<h2><i class="bi bi-safe"></i> Historial de caja</h2>
+<div class="card">
+    <table class="table table-hover mb-0">
+        <thead>
+        <tr><th>#</th><th>Abierta por</th><th>Apertura</th><th>Monto inicial</th><th>Cierre</th><th>Esperado</th><th>Contado</th><th>Diferencia</th></tr>
+        </thead>
+        <tbody>
+        {% for session in sessions %}
+            <tr class="{% if session.difference and session.difference != 0 %}table-low-stock{% endif %}">
+                <td>{{ session.pk }}</td>
+                <td>{{ session.opened_by }}</td>
+                <td>{{ session.opened_at|date:"d/m/Y H:i" }}</td>
+                <td>L {{ session.opening_amount|floatformat:2 }}</td>
+                <td>
+                    {% if session.is_open %}
+                        <span class="badge bg-success">Abierta</span>
+                    {% else %}
+                        {{ session.closed_at|date:"d/m/Y H:i" }}
+                    {% endif %}
+                </td>
+                <td>{% if session.expected_amount is not None %}L {{ session.expected_amount|floatformat:2 }}{% else %}—{% endif %}</td>
+                <td>{% if session.counted_amount is not None %}L {{ session.counted_amount|floatformat:2 }}{% else %}—{% endif %}</td>
+                <td>{% if session.difference is not None %}L {{ session.difference|floatformat:2 }}{% else %}—{% endif %}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="8" class="text-muted text-center py-4">No hay sesiones de caja registradas.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
