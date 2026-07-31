@@ -36,6 +36,19 @@ class Company(models.Model):
 
     default_isv_rate = models.DecimalField("Tasa de ISV por defecto (%)", max_digits=5, decimal_places=2, default=Decimal("15.00"))
 
+    RECEIPT_THERMAL_80 = "thermal_80"
+    RECEIPT_THERMAL_58 = "thermal_58"
+    RECEIPT_LETTER = "letter"
+    RECEIPT_FORMAT_CHOICES = [
+        (RECEIPT_THERMAL_80, "Térmica 80mm"),
+        (RECEIPT_THERMAL_58, "Térmica 58mm"),
+        (RECEIPT_LETTER, "Matriz de puntos / carta"),
+    ]
+    receipt_format = models.CharField(
+        "Formato de impresión de ticket", max_length=15, choices=RECEIPT_FORMAT_CHOICES, default=RECEIPT_THERMAL_80
+    )
+    auto_print_on_sale = models.BooleanField("Imprimir automáticamente al cobrar una venta", default=True)
+
     updated_at = models.DateTimeField("Actualizado", auto_now=True)
 
     class Meta:

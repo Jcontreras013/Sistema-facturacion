@@ -71,7 +71,7 @@
 <div class="container-fluid py-4 px-4">
     {% if messages %}
         {% for message in messages %}
-            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show no-print" role="alert">
                 {{ message }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>

@@ -5,10 +5,12 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils.dateparse import parse_date
 
 from clients.models import Client
 from core.audit import log_action
+from core.models import Company
 from core.permissions import admin_required
 from inventory.models import Product, StockMovement
 
@@ -79,7 +81,10 @@ def pos(request):
 
         log_action(request.user, "created", sale)
         messages.success(request, f"Venta {sale.number} registrada correctamente.")
-        return redirect("sales:sale_detail", pk=sale.pk)
+        sale_url = reverse("sales:sale_detail", args=[sale.pk])
+        if Company.load().auto_print_on_sale:
+            sale_url += "?autoprint=1"
+        return redirect(sale_url)
 
     products = Product.objects.filter(is_active=True, stock__gt=0).order_by("name")
     products_data = [
@@ -111,7 +116,11 @@ def pos(request):
 @login_required
 def sale_detail(request, pk):
     sale = get_object_or_404(Sale.objects.select_related("client", "user"), pk=pk)
-    return render(request, "sales/sale_detail.html", {"sale": sale})
+    company = Company.load()
+    autoprint = request.GET.get("autoprint") == "1" and company.auto_print_on_sale
+    return render(
+        request, "sales/sale_detail.html", {"sale": sale, "company": company, "autoprint": autoprint}
+    )
 
 
 @login_required
@@ -320,7 +329,9 @@ def credit_note_detail(request, pk):
     credit_note = get_object_or_404(
         CreditNote.objects.select_related("sale", "user"), pk=pk
     )
-    return render(request, "sales/credit_note_detail.html", {"credit_note": credit_note})
+    return render(
+        request, "sales/credit_note_detail.html", {"credit_note": credit_note, "company": Company.load()}
+    )
 
 
 @admin_required

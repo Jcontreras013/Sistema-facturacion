@@ -1,10 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Venta {{ sale.number }}{% endblock %}
 {% block content %}
+<div class="{% if company.receipt_format == 'thermal_80' %}receipt-thermal-80{% elif company.receipt_format == 'thermal_58' %}receipt-thermal-58{% endif %}">
 <div class="invoice-box card p-4">
-    <div class="d-flex justify-content-between align-items-start">
+    <div class="d-flex justify-content-between align-items-start receipt-header">
         <div>
-            <h3>Mini Market</h3>
+            <h3>{{ company.trade_name|default:company.business_name|default:"Mini Market" }}</h3>
+            {% if company.rtn %}<div class="small">RTN: {{ company.rtn }}</div>{% endif %}
+            {% if company.address %}<div class="small">{{ company.address }}</div>{% endif %}
             <div class="text-muted">Factura {{ sale.number }}</div>
         </div>
         <div class="text-end">
@@ -31,14 +34,14 @@
     </div>
 
     <table class="table">
-        <thead><tr><th>Producto</th><th>Cantidad</th><th>Precio unit.</th><th>ISV</th><th class="text-end">Subtotal</th></tr></thead>
+        <thead><tr><th>Producto</th><th>Cantidad</th><th class="col-unit-price">Precio unit.</th><th class="col-optional">ISV</th><th class="text-end">Subtotal</th></tr></thead>
         <tbody>
         {% for item in sale.items.all %}
             <tr>
                 <td>{{ item.product.name }}</td>
                 <td>{{ item.quantity }}</td>
-                <td>L {{ item.unit_price|floatformat:2 }}</td>
-                <td>{{ item.tax_rate|floatformat:0 }}%</td>
+                <td class="col-unit-price">L {{ item.unit_price|floatformat:2 }}</td>
+                <td class="col-optional">{{ item.tax_rate|floatformat:0 }}%</td>
                 <td class="text-end">L {{ item.subtotal|floatformat:2 }}</td>
             </tr>
         {% endfor %}
@@ -73,7 +76,7 @@
 </div>
 
 {% if sale.credit_notes.all %}
-<div class="invoice-box card p-4 mt-3 no-print-margin">
+<div class="invoice-box card p-4 mt-3 no-print">
     <h6>Notas de crédito relacionadas</h6>
     <table class="table table-sm mb-0">
         <thead><tr><th>No.</th><th>Fecha</th><th>Motivo</th><th>Total</th><th></th></tr></thead>
@@ -125,5 +128,16 @@
         <button type="submit" class="btn btn-outline-danger">Generar nota de crédito</button>
     </form>
 </div>
+{% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if autoprint %}
+<script>
+window.addEventListener('load', function () {
+    window.print();
+});
+</script>
 {% endif %}
 {% endblock %}

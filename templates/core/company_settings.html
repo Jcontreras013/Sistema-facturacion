@@ -95,6 +95,22 @@
             <span class="badge bg-info">Facturas restantes en el rango: {{ company.range_remaining }}</span>
         </div>
 
+        <hr>
+        <h6>Impresión de tickets</h6>
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label">{{ form.receipt_format.label }}</label>
+                {{ form.receipt_format }}
+                <small class="text-muted">Ajusta el ancho y el detalle del ticket a tu impresora (térmica de 58/80mm o matriz de puntos/carta).</small>
+            </div>
+            <div class="col-md-6 d-flex align-items-center">
+                <div class="form-check mt-4">
+                    {{ form.auto_print_on_sale }}
+                    <label class="form-check-label">{{ form.auto_print_on_sale.label }}</label>
+                </div>
+            </div>
+        </div>
+
         <div class="mt-4">
             <button type="submit" class="btn btn-primary">Guardar</button>
         </div>

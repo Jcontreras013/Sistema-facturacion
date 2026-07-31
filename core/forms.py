@@ -25,6 +25,8 @@ class CompanyForm(forms.ModelForm):
             "next_correlative",
             "emission_limit_date",
             "default_isv_rate",
+            "receipt_format",
+            "auto_print_on_sale",
         ]
         widgets = {
             "business_name": forms.TextInput(attrs={"class": "form-control"}),
@@ -43,6 +45,8 @@ class CompanyForm(forms.ModelForm):
             "next_correlative": forms.NumberInput(attrs={"class": "form-control"}),
             "emission_limit_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "default_isv_rate": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "receipt_format": forms.Select(attrs={"class": "form-select"}),
+            "auto_print_on_sale": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
 

@@ -34,4 +34,76 @@ body {
     nav, .no-print {
         display: none !important;
     }
+
+    @page thermal80 {
+        size: 80mm auto;
+        margin: 2mm;
+    }
+
+    @page thermal58 {
+        size: 58mm auto;
+        margin: 2mm;
+    }
+
+    .receipt-thermal-80 {
+        page: thermal80;
+    }
+
+    .receipt-thermal-58 {
+        page: thermal58;
+    }
+
+    .receipt-thermal-80,
+    .receipt-thermal-58 {
+        width: 100%;
+        font-family: "Courier New", Courier, monospace;
+        font-size: 11px;
+    }
+
+    .receipt-thermal-58 {
+        font-size: 10px;
+    }
+
+    .receipt-thermal-80 .invoice-box,
+    .receipt-thermal-58 .invoice-box {
+        max-width: 100%;
+        width: 100%;
+        box-shadow: none;
+        border: none;
+        padding: 0 !important;
+        margin: 0;
+    }
+
+    .receipt-thermal-80 .card,
+    .receipt-thermal-58 .card {
+        box-shadow: none;
+        border: none;
+        padding: 0 !important;
+    }
+
+    .receipt-thermal-80 table,
+    .receipt-thermal-58 table {
+        font-size: 10px;
+    }
+
+    .receipt-thermal-58 table {
+        font-size: 9px;
+    }
+
+    .receipt-thermal-80 .col-optional,
+    .receipt-thermal-58 .col-optional,
+    .receipt-thermal-58 .col-unit-price {
+        display: none !important;
+    }
+
+    .receipt-thermal-80 h3,
+    .receipt-thermal-58 h3 {
+        font-size: 14px;
+        text-align: center;
+    }
+
+    .receipt-thermal-80 .receipt-header,
+    .receipt-thermal-58 .receipt-header {
+        text-align: center;
+    }
 }
