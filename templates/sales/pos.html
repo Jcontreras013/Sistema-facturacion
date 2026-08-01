@@ -19,12 +19,17 @@
 
             <div class="card p-3 mb-3">
                 <label class="form-label">Cliente</label>
-                <select name="client_id" class="form-select mb-2">
-                    <option value="">Consumidor final</option>
+                <select name="client_id" id="clientSelect" class="form-select mb-2">
+                    <option value="" data-document="">Consumidor final</option>
                     {% for client in clients %}
-                        <option value="{{ client.pk }}">{{ client.name }}</option>
+                        <option value="{{ client.pk }}" data-document="{{ client.document }}">{{ client.name }}</option>
                     {% endfor %}
                 </select>
+
+                <label class="form-label">RTN del cliente</label>
+                <input type="text" name="client_rtn" id="clientRtn" class="form-control mb-1" placeholder="Selecciona un cliente para agregar su RTN" disabled>
+                <div class="small text-muted mb-2" id="rtnHint"></div>
+
                 <label class="form-label">Forma de pago</label>
                 <select name="payment_method" class="form-select mb-2">
                     {% for value, label in payment_methods %}
@@ -160,6 +165,38 @@ function renderCart() {
     document.getElementById('cartTotal').textContent = 'L ' + total.toFixed(2);
     document.getElementById('checkoutBtn').disabled = cart.length === 0;
 }
+
+const clientSelect = document.getElementById('clientSelect');
+const clientRtn = document.getElementById('clientRtn');
+const rtnHint = document.getElementById('rtnHint');
+
+function syncClientRtn() {
+    const option = clientSelect.options[clientSelect.selectedIndex];
+    const hasClient = !!option.value;
+    const savedDocument = option.dataset.document || '';
+
+    if (!hasClient) {
+        clientRtn.value = '';
+        clientRtn.readOnly = false;
+        clientRtn.disabled = true;
+        clientRtn.placeholder = 'Selecciona un cliente para agregar su RTN';
+        rtnHint.textContent = '';
+    } else if (savedDocument) {
+        clientRtn.value = savedDocument;
+        clientRtn.readOnly = true;
+        clientRtn.disabled = false;
+        rtnHint.textContent = 'Ya registrado en este cliente.';
+    } else {
+        clientRtn.value = '';
+        clientRtn.readOnly = false;
+        clientRtn.disabled = false;
+        clientRtn.placeholder = 'Escribe el RTN (se guardará en este cliente)';
+        rtnHint.textContent = 'Este cliente no tiene RTN guardado — si lo escribes aquí, se guarda al cobrar.';
+    }
+}
+
+clientSelect.addEventListener('change', syncClientRtn);
+syncClientRtn();
 
 const searchBox = document.getElementById('searchBox');
 searchBox.addEventListener('input', (e) => renderProducts(e.target.value));
