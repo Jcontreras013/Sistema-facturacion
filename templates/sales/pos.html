@@ -21,10 +21,13 @@
                 <label class="form-label">Cliente</label>
                 <select name="client_id" id="clientSelect" class="form-select mb-2">
                     <option value="" data-document="">Consumidor final</option>
+                    <option value="__new__" data-document="">+ Nuevo cliente...</option>
                     {% for client in clients %}
                         <option value="{{ client.pk }}" data-document="{{ client.document }}">{{ client.name }}</option>
                     {% endfor %}
                 </select>
+
+                <input type="text" name="new_client_name" id="newClientName" class="form-control mb-1" placeholder="Nombre del nuevo cliente" style="display:none;">
 
                 <label class="form-label">RTN del cliente</label>
                 <input type="text" name="client_rtn" id="clientRtn" class="form-control mb-1" placeholder="Selecciona un cliente para agregar su RTN" disabled>
@@ -169,13 +172,26 @@ function renderCart() {
 const clientSelect = document.getElementById('clientSelect');
 const clientRtn = document.getElementById('clientRtn');
 const rtnHint = document.getElementById('rtnHint');
+const newClientName = document.getElementById('newClientName');
 
 function syncClientRtn() {
     const option = clientSelect.options[clientSelect.selectedIndex];
+    const isNew = option.value === '__new__';
     const hasClient = !!option.value;
     const savedDocument = option.dataset.document || '';
 
-    if (!hasClient) {
+    newClientName.style.display = isNew ? 'block' : 'none';
+    if (!isNew) {
+        newClientName.value = '';
+    }
+
+    if (isNew) {
+        clientRtn.value = '';
+        clientRtn.readOnly = false;
+        clientRtn.disabled = false;
+        clientRtn.placeholder = 'RTN del nuevo cliente (opcional)';
+        rtnHint.textContent = 'Se creará un cliente nuevo con este nombre y RTN al cobrar.';
+    } else if (!hasClient) {
         clientRtn.value = '';
         clientRtn.readOnly = false;
         clientRtn.disabled = true;

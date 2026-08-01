@@ -32,6 +32,7 @@ def pos(request):
         cart_raw = request.POST.get("cart_data", "[]")
         client_id = request.POST.get("client_id") or None
         client_rtn = request.POST.get("client_rtn", "").strip()
+        new_client_name = request.POST.get("new_client_name", "").strip()
         payment_method = request.POST.get("payment_method", "efectivo")
         notes = request.POST.get("notes", "")
 
@@ -46,7 +47,14 @@ def pos(request):
 
         try:
             with transaction.atomic():
-                if client_id and client_rtn:
+                if client_id == "__new__":
+                    if new_client_name:
+                        new_client = Client.objects.create(name=new_client_name, document=client_rtn)
+                        log_action(request.user, "created", new_client, extra="Creado desde el POS")
+                        client_id = new_client.pk
+                    else:
+                        client_id = None
+                elif client_id and client_rtn:
                     Client.objects.filter(pk=client_id, document="").update(document=client_rtn)
 
                 sale = Sale.objects.create(
