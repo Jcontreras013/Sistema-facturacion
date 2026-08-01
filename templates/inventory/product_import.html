@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Importar productos{% endblock %}
+{% block content %}
+<h2><i class="bi bi-file-earmark-arrow-up"></i> Importar productos</h2>
+<p class="text-muted">
+    Sube el archivo que exportaste de tu sistema anterior (Excel <code>.xlsx</code>/<code>.xls</code> o <code>.csv</code>).
+    En el siguiente paso vas a poder revisar cómo se interpretó cada columna y corregirlo antes de confirmar —
+    no hace falta que el archivo tenga un formato exacto.
+</p>
+<div class="card p-4" style="max-width: 600px;">
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">Archivo (.xlsx, .xls o .csv)</label>
+            <input type="file" name="file" accept=".xlsx,.xls,.csv" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Subir y continuar</button>
+        <a href="{% url 'inventory:product_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}
