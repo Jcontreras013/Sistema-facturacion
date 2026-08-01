@@ -19,13 +19,11 @@
 
             <div class="card p-3 mb-3">
                 <label class="form-label">Cliente</label>
-                <select name="client_id" id="clientSelect" class="form-select mb-2">
-                    <option value="" data-document="">Consumidor final</option>
-                    <option value="__new__" data-document="">+ Nuevo cliente...</option>
-                    {% for client in clients %}
-                        <option value="{{ client.pk }}" data-document="{{ client.document }}">{{ client.name }}</option>
-                    {% endfor %}
-                </select>
+                <div class="position-relative mb-2">
+                    <input type="text" id="clientSearch" class="form-control" placeholder="Buscar cliente por nombre..." autocomplete="off">
+                    <input type="hidden" name="client_id" id="clientIdInput" value="">
+                    <div id="clientResults" class="list-group position-absolute w-100 shadow-sm" style="z-index:1000; max-height:220px; overflow-y:auto; display:none;"></div>
+                </div>
 
                 <input type="text" name="new_client_name" id="newClientName" class="form-control mb-1" placeholder="Nombre del nuevo cliente" style="display:none;">
 
@@ -169,16 +167,20 @@ function renderCart() {
     document.getElementById('checkoutBtn').disabled = cart.length === 0;
 }
 
-const clientSelect = document.getElementById('clientSelect');
+const CLIENTS = {{ clients_json|safe }};
+const clientSearch = document.getElementById('clientSearch');
+const clientIdInput = document.getElementById('clientIdInput');
+const clientResults = document.getElementById('clientResults');
 const clientRtn = document.getElementById('clientRtn');
 const rtnHint = document.getElementById('rtnHint');
 const newClientName = document.getElementById('newClientName');
 
+let currentClient = { value: '', name: 'Consumidor final', document: '' };
+
 function syncClientRtn() {
-    const option = clientSelect.options[clientSelect.selectedIndex];
-    const isNew = option.value === '__new__';
-    const hasClient = !!option.value;
-    const savedDocument = option.dataset.document || '';
+    const isNew = clientIdInput.value === '__new__';
+    const hasClient = !!clientIdInput.value;
+    const savedDocument = currentClient.document || '';
 
     newClientName.style.display = isNew ? 'block' : 'none';
     if (!isNew) {
@@ -211,8 +213,51 @@ function syncClientRtn() {
     }
 }
 
-clientSelect.addEventListener('change', syncClientRtn);
-syncClientRtn();
+function selectClient(value, name, document_) {
+    clientIdInput.value = value;
+    clientSearch.value = name;
+    currentClient = { value, name, document: document_ || '' };
+    clientResults.style.display = 'none';
+    syncClientRtn();
+}
+
+function renderClientResults(term) {
+    const t = (term || '').toLowerCase();
+    const items = [];
+    items.push({ value: '', name: 'Consumidor final', document: '' });
+    items.push({ value: '__new__', name: '+ Nuevo cliente...', document: '' });
+    CLIENTS.filter(c => c.name.toLowerCase().includes(t)).forEach(c => {
+        items.push({ value: String(c.id), name: c.name, document: c.document });
+    });
+
+    clientResults.innerHTML = '';
+    items.forEach(item => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'list-group-item list-group-item-action';
+        btn.textContent = item.name;
+        btn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            selectClient(item.value, item.name, item.document);
+        });
+        clientResults.appendChild(btn);
+    });
+    clientResults.style.display = items.length ? 'block' : 'none';
+}
+
+clientSearch.addEventListener('focus', () => {
+    clientSearch.select();
+    renderClientResults('');
+});
+clientSearch.addEventListener('input', () => renderClientResults(clientSearch.value));
+clientSearch.addEventListener('blur', () => {
+    clientResults.style.display = 'none';
+    if (clientSearch.value !== currentClient.name) {
+        clientSearch.value = currentClient.name;
+    }
+});
+
+selectClient('', 'Consumidor final', '');
 
 const searchBox = document.getElementById('searchBox');
 searchBox.addEventListener('input', (e) => renderProducts(e.target.value));

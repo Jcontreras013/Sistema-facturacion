@@ -113,12 +113,13 @@ def pos(request):
         for p in products
     ]
     clients = Client.objects.filter(is_active=True).order_by("name")
+    clients_data = [{"id": c.id, "name": c.name, "document": c.document or ""} for c in clients]
     return render(
         request,
         "sales/pos.html",
         {
             "products_json": json.dumps(products_data),
-            "clients": clients,
+            "clients_json": json.dumps(clients_data),
             "payment_methods": Sale.PAYMENT_METHODS,
             "open_session": open_session,
         },
