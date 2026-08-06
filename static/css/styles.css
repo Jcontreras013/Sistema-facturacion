@@ -266,13 +266,10 @@ a:hover {
 
 .pos-product-card {
     cursor: pointer;
-    border-radius: var(--radius-md);
-    transition: transform 0.12s ease-in-out, box-shadow 0.12s ease-in-out;
 }
 
 .pos-product-card:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-md);
+    background-color: var(--brand-light);
 }
 
 .invoice-box {
