@@ -8,23 +8,6 @@
 
 <div class="row g-4">
     <div class="col-md-7">
-        <input type="text" id="searchBox" class="form-control mb-3" placeholder="Buscar o escanear código de barras... (Enter para agregar)" autofocus>
-        <div class="card" style="max-height: 65vh; overflow-y: auto;">
-            <table class="table table-sm table-hover align-middle mb-0">
-                <thead class="sticky-top bg-white">
-                    <tr>
-                        <th>Producto</th>
-                        <th>Código</th>
-                        <th class="text-end">Precio</th>
-                        <th class="text-end">Stock</th>
-                    </tr>
-                </thead>
-                <tbody id="productGrid"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="col-md-5">
         <form method="post" id="saleForm">
             {% csrf_token %}
 
@@ -67,6 +50,23 @@
                 <div id="posMessage" class="alert mt-2 mb-0" style="display:none;"></div>
             </div>
         </form>
+    </div>
+
+    <div class="col-md-5">
+        <input type="text" id="searchBox" class="form-control mb-3" placeholder="Buscar o escanear código de barras... (Enter para agregar)" autofocus>
+        <div class="card" style="max-height: 65vh; overflow-y: auto;">
+            <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="sticky-top bg-white">
+                    <tr>
+                        <th>Producto</th>
+                        <th>Código</th>
+                        <th class="text-end">Precio</th>
+                        <th class="text-end">Stock</th>
+                    </tr>
+                </thead>
+                <tbody id="productGrid"></tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}
