@@ -80,20 +80,32 @@ function renderProducts(filter) {
     const grid = document.getElementById('productGrid');
     grid.innerHTML = '';
     const term = (filter || '').toLowerCase();
-    PRODUCTS.filter(p => p.name.toLowerCase().includes(term) || p.code.toLowerCase().includes(term) || (p.barcode && p.barcode.toLowerCase().includes(term)))
-        .forEach(p => {
-            const row = document.createElement('tr');
-            row.className = 'pos-product-card';
-            row.dataset.id = p.id;
-            row.innerHTML = `
-                <td class="fw-bold">${p.name}</td>
-                <td class="text-muted small">${p.code}</td>
-                <td class="text-end text-success">L ${parseFloat(p.price).toFixed(2)}</td>
-                <td class="text-end small">${p.stock} ${p.unit}</td>
-            `;
-            row.addEventListener('click', () => addToCart(p));
-            grid.appendChild(row);
-        });
+
+    if (!term) {
+        grid.innerHTML = '<tr><td colspan="4" class="text-muted text-center py-4">Escribe un nombre o código, o escanea un código de barras para ver productos.</td></tr>';
+        return;
+    }
+
+    const matches = PRODUCTS.filter(p => p.name.toLowerCase().includes(term) || p.code.toLowerCase().includes(term) || (p.barcode && p.barcode.toLowerCase().includes(term)));
+
+    if (!matches.length) {
+        grid.innerHTML = '<tr><td colspan="4" class="text-muted text-center py-4">No se encontraron productos.</td></tr>';
+        return;
+    }
+
+    matches.forEach(p => {
+        const row = document.createElement('tr');
+        row.className = 'pos-product-card';
+        row.dataset.id = p.id;
+        row.innerHTML = `
+            <td class="fw-bold">${p.name}</td>
+            <td class="text-muted small">${p.code}</td>
+            <td class="text-end text-success">L ${parseFloat(p.price).toFixed(2)}</td>
+            <td class="text-end small">${p.stock} ${p.unit}</td>
+        `;
+        row.addEventListener('click', () => addToCart(p));
+        grid.appendChild(row);
+    });
 }
 
 function addToCart(product) {
