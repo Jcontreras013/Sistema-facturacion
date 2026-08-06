@@ -5,6 +5,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
+from django.http import HttpResponse
 
 from inventory.models import Product
 from sales.models import CashSession, Sale
@@ -13,6 +15,11 @@ from .audit import log_action
 from .forms import CompanyForm, UserCreateForm, UserUpdateForm
 from .models import AuditLog, Company
 from .permissions import admin_required, is_admin
+
+
+def service_worker(request):
+    content = render_to_string("sw.js", request=request)
+    return HttpResponse(content, content_type="application/javascript")
 
 
 @login_required

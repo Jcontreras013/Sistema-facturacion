@@ -1,0 +1,38 @@
+{
+    "name": "Mini Market - Sistema de Facturación",
+    "short_name": "Mini Market",
+    "description": "Punto de venta e inventario para mini markets y pulperías",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#198754",
+    "theme_color": "#198754",
+    "orientation": "any",
+    "lang": "es",
+    "icons": [
+        {
+            "src": "/static/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/static/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/static/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/static/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

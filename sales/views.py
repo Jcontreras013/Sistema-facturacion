@@ -4,6 +4,7 @@ from decimal import Decimal, InvalidOperation
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.dateparse import parse_date
@@ -19,6 +20,60 @@ from .models import CashSession, CreditNote, CreditNoteItem, Sale, SaleItem
 
 def _get_open_session():
     return CashSession.objects.filter(closed_at__isnull=True).order_by("-opened_at").first()
+
+
+def _create_sale(user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes):
+    """Crea una venta a partir de un carrito ya validado. Lanza ValueError/InvalidOperation/KeyError/Http404 en caso de error."""
+    with transaction.atomic():
+        if client_id == "__new__":
+            if new_client_name:
+                new_client = Client.objects.create(name=new_client_name, document=client_rtn)
+                log_action(user, "created", new_client, extra="Creado desde el POS")
+                client_id = new_client.pk
+            else:
+                client_id = None
+        elif client_id and client_rtn:
+            Client.objects.filter(pk=client_id, document="").update(document=client_rtn)
+
+        sale = Sale.objects.create(
+            client_id=client_id,
+            user=user,
+            payment_method=payment_method,
+            notes=notes,
+            cash_session=open_session,
+        )
+        for entry in cart:
+            product = get_object_or_404(Product, pk=entry["id"])
+            quantity = Decimal(str(entry["quantity"]))
+            if quantity <= 0:
+                raise ValueError(f"Cantidad inválida para {product.name}.")
+            if quantity > product.stock:
+                raise ValueError(f"Stock insuficiente para '{product.name}' (disponible: {product.stock}).")
+            SaleItem.objects.create(
+                sale=sale,
+                product=product,
+                quantity=quantity,
+                unit_price=product.sale_price,
+                tax_rate=product.tax_rate,
+            )
+            StockMovement.objects.create(
+                product=product,
+                movement_type="out",
+                reason_category="venta",
+                quantity=quantity,
+                reason=f"Venta {sale.number if sale.number else sale.pk}",
+                user=user,
+            )
+        sale.recalculate_totals()
+    log_action(user, "created", sale)
+    return sale
+
+
+def _sale_redirect_url(sale):
+    sale_url = reverse("sales:sale_detail", args=[sale.pk])
+    if Company.load().auto_print_on_sale:
+        sale_url += "?autoprint=1"
+    return sale_url
 
 
 @login_required
@@ -46,57 +101,15 @@ def pos(request):
             return redirect("sales:pos")
 
         try:
-            with transaction.atomic():
-                if client_id == "__new__":
-                    if new_client_name:
-                        new_client = Client.objects.create(name=new_client_name, document=client_rtn)
-                        log_action(request.user, "created", new_client, extra="Creado desde el POS")
-                        client_id = new_client.pk
-                    else:
-                        client_id = None
-                elif client_id and client_rtn:
-                    Client.objects.filter(pk=client_id, document="").update(document=client_rtn)
-
-                sale = Sale.objects.create(
-                    client_id=client_id,
-                    user=request.user,
-                    payment_method=payment_method,
-                    notes=notes,
-                    cash_session=open_session,
-                )
-                for entry in cart:
-                    product = get_object_or_404(Product, pk=entry["id"])
-                    quantity = Decimal(str(entry["quantity"]))
-                    if quantity <= 0:
-                        raise ValueError(f"Cantidad inválida para {product.name}.")
-                    if quantity > product.stock:
-                        raise ValueError(f"Stock insuficiente para '{product.name}' (disponible: {product.stock}).")
-                    SaleItem.objects.create(
-                        sale=sale,
-                        product=product,
-                        quantity=quantity,
-                        unit_price=product.sale_price,
-                        tax_rate=product.tax_rate,
-                    )
-                    StockMovement.objects.create(
-                        product=product,
-                        movement_type="out",
-                        reason_category="venta",
-                        quantity=quantity,
-                        reason=f"Venta {sale.number if sale.number else sale.pk}",
-                        user=request.user,
-                    )
-                sale.recalculate_totals()
+            sale = _create_sale(
+                request.user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes
+            )
         except (ValueError, InvalidOperation, KeyError) as exc:
             messages.error(request, str(exc) or "No se pudo completar la venta.")
             return redirect("sales:pos")
 
-        log_action(request.user, "created", sale)
         messages.success(request, f"Venta {sale.number} registrada correctamente.")
-        sale_url = reverse("sales:sale_detail", args=[sale.pk])
-        if Company.load().auto_print_on_sale:
-            sale_url += "?autoprint=1"
-        return redirect(sale_url)
+        return redirect(_sale_redirect_url(sale))
 
     products = Product.objects.filter(is_active=True, stock__gt=0).order_by("name")
     products_data = [
@@ -124,6 +137,43 @@ def pos(request):
             "open_session": open_session,
         },
     )
+
+
+@login_required
+def pos_checkout_api(request):
+    """Endpoint JSON usado por el POS (en línea y para sincronizar ventas que quedaron pendientes sin conexión)."""
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "error": "Método no permitido."}, status=405)
+
+    open_session = _get_open_session()
+    if not open_session:
+        return JsonResponse(
+            {"ok": False, "error": "No hay una caja abierta.", "code": "no_session"}, status=409
+        )
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "Datos inválidos."}, status=400)
+
+    cart = payload.get("cart") or []
+    client_id = payload.get("client_id") or None
+    client_rtn = (payload.get("client_rtn") or "").strip()
+    new_client_name = (payload.get("new_client_name") or "").strip()
+    payment_method = payload.get("payment_method") or "efectivo"
+    notes = payload.get("notes") or ""
+
+    if not cart:
+        return JsonResponse({"ok": False, "error": "Agrega al menos un producto a la venta."}, status=400)
+
+    try:
+        sale = _create_sale(
+            request.user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes
+        )
+    except (ValueError, InvalidOperation, KeyError, Http404) as exc:
+        return JsonResponse({"ok": False, "error": str(exc) or "No se pudo completar la venta."}, status=400)
+
+    return JsonResponse({"ok": True, "sale_number": sale.number, "redirect_url": _sale_redirect_url(sale)})
 
 
 @login_required

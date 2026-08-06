@@ -6,6 +6,7 @@ app_name = "sales"
 
 urlpatterns = [
     path("pos/", views.pos, name="pos"),
+    path("pos/api/checkout/", views.pos_checkout_api, name="pos_checkout_api"),
     path("caja/abrir/", views.cash_session_open, name="cash_session_open"),
     path("caja/cerrar/", views.cash_session_close, name="cash_session_close"),
     path("caja/<int:pk>/eliminar/", views.cash_session_delete, name="cash_session_delete"),

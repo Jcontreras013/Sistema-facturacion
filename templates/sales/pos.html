@@ -15,7 +15,6 @@
     <div class="col-md-5">
         <form method="post" id="saleForm">
             {% csrf_token %}
-            <input type="hidden" name="cart_data" id="cartData">
 
             <div class="card p-3 mb-3">
                 <label class="form-label">Cliente</label>
@@ -53,6 +52,7 @@
                 <button type="submit" class="btn btn-success btn-lg mt-3" id="checkoutBtn" disabled>
                     <i class="bi bi-check-circle"></i> Cobrar venta
                 </button>
+                <div id="posMessage" class="alert mt-2 mb-0" style="display:none;"></div>
             </div>
         </form>
     </div>
@@ -271,8 +271,57 @@ searchBox.addEventListener('keydown', (e) => {
     }
 });
 
-document.getElementById('saleForm').addEventListener('submit', () => {
-    document.getElementById('cartData').value = JSON.stringify(cart.map(i => ({ id: i.id, quantity: i.quantity })));
+const checkoutBtn = document.getElementById('checkoutBtn');
+const posMessage = document.getElementById('posMessage');
+const notesInput = document.querySelector('input[name="notes"]');
+const paymentSelect = document.querySelector('select[name="payment_method"]');
+
+function showPosMessage(text, variant) {
+    posMessage.className = 'alert alert-' + variant + ' mt-2 mb-0';
+    posMessage.textContent = text;
+    posMessage.style.display = 'block';
+}
+
+function resetSaleForm() {
+    cart = [];
+    renderCart();
+    selectClient('', 'Consumidor final', '');
+    notesInput.value = '';
+}
+
+document.getElementById('saleForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (cart.length === 0) return;
+
+    const payload = {
+        cart: cart.map(i => ({ id: i.id, quantity: i.quantity })),
+        client_id: clientIdInput.value,
+        client_rtn: clientRtn.value,
+        new_client_name: newClientName.value,
+        payment_method: paymentSelect.value,
+        notes: notesInput.value,
+    };
+
+    checkoutBtn.disabled = true;
+    posMessage.style.display = 'none';
+
+    try {
+        const result = await MMOffline.submitToServer(payload);
+        if (result.ok) {
+            window.location = result.data.redirect_url;
+            return;
+        }
+        showPosMessage((result.data && result.data.error) || 'No se pudo completar la venta.', 'danger');
+        checkoutBtn.disabled = false;
+    } catch (err) {
+        await MMOffline.queueSale(payload);
+        await MMOffline.updateBadge();
+        resetSaleForm();
+        showPosMessage(
+            'Sin conexión: la venta se guardó en este dispositivo y se enviará automáticamente cuando vuelva el internet. Aún no tiene número de factura oficial.',
+            'warning'
+        );
+    }
 });
 
 renderProducts('');
