@@ -1,31 +1,35 @@
 {% extends "base.html" %}
 {% block title %}Iniciar sesión{% endblock %}
 {% block content %}
-<div class="row justify-content-center mt-5">
-    <div class="col-md-4">
-        <div class="card p-4">
-            <div class="text-center mb-3">
-                <i class="bi bi-shop" style="font-size: 2.5rem;"></i>
-                <h4 class="mt-2">Mini Market</h4>
-                <p class="text-muted">Sistema de Facturación</p>
-            </div>
-            {% if form.errors %}
-                <div class="alert alert-danger">Usuario o contraseña incorrectos.</div>
-            {% endif %}
-            <form method="post">
-                {% csrf_token %}
-                <div class="mb-3">
-                    <label class="form-label">Usuario</label>
+<div class="auth-shell" style="margin: -1.5rem;">
+    <div class="auth-card">
+        <div class="text-center mb-4">
+            <div class="auth-badge"><i class="bi bi-shop"></i></div>
+            <h4 class="mb-1">Mini Market</h4>
+            <p class="text-muted mb-0">Sistema de Facturación</p>
+        </div>
+        {% if form.errors %}
+            <div class="alert alert-danger py-2"><i class="bi bi-exclamation-triangle"></i> Usuario o contraseña incorrectos.</div>
+        {% endif %}
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label">Usuario</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-person"></i></span>
                     <input type="text" name="username" class="form-control" required autofocus>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Contraseña</label>
+            </div>
+            <div class="mb-4">
+                <label class="form-label">Contraseña</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-lock"></i></span>
                     <input type="password" name="password" class="form-control" required>
                 </div>
-                <input type="hidden" name="next" value="{{ next }}">
-                <button type="submit" class="btn btn-primary w-100">Ingresar</button>
-            </form>
-        </div>
+            </div>
+            <input type="hidden" name="next" value="{{ next }}">
+            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-box-arrow-in-right"></i> Ingresar</button>
+        </form>
     </div>
 </div>
 {% endblock %}

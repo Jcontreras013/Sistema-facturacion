@@ -11,27 +11,31 @@
 
 <div class="row g-3 mb-4">
     <div class="col-md-3">
-        <div class="card stat-card p-3 bg-primary text-white">
-            <div class="small">Ventas de hoy</div>
+        <div class="card stat-card stat-brand p-3 text-white">
+            <i class="bi bi-cash-coin stat-icon"></i>
+            <div class="small opacity-75">Ventas de hoy</div>
             <div class="fs-3 fw-bold">L {{ today_total|floatformat:2 }}</div>
-            <div class="small">{{ today_sales_count }} factura(s)</div>
+            <div class="small opacity-75">{{ today_sales_count }} factura(s)</div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card stat-card p-3 bg-success text-white">
-            <div class="small">Ventas del mes</div>
+        <div class="card stat-card stat-teal p-3 text-white">
+            <i class="bi bi-graph-up-arrow stat-icon"></i>
+            <div class="small opacity-75">Ventas del mes</div>
             <div class="fs-3 fw-bold">L {{ month_total|floatformat:2 }}</div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card stat-card p-3 bg-info text-white">
-            <div class="small">Productos activos</div>
+        <div class="card stat-card stat-blue p-3 text-white">
+            <i class="bi bi-box-seam stat-icon"></i>
+            <div class="small opacity-75">Productos activos</div>
             <div class="fs-3 fw-bold">{{ total_products }}</div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card stat-card p-3 {% if low_stock_count %}bg-warning{% else %}bg-secondary{% endif %} text-white">
-            <div class="small">Alertas de stock bajo</div>
+        <div class="card stat-card {% if low_stock_count %}stat-amber{% else %}stat-slate{% endif %} p-3 text-white">
+            <i class="bi bi-exclamation-triangle stat-icon"></i>
+            <div class="small opacity-75">Alertas de stock bajo</div>
             <div class="fs-3 fw-bold">{{ low_stock_count }}</div>
         </div>
     </div>
@@ -53,7 +57,7 @@
 <div class="row g-4">
     <div class="col-md-6">
         <div class="card p-3">
-            <h5>Últimas ventas</h5>
+            <h5><i class="bi bi-receipt-cutoff text-success"></i> Últimas ventas</h5>
             <table class="table table-sm">
                 <thead><tr><th>No.</th><th>Cliente</th><th>Total</th><th></th></tr></thead>
                 <tbody>
@@ -73,7 +77,7 @@
     </div>
     <div class="col-md-6">
         <div class="card p-3">
-            <h5>Productos con stock bajo</h5>
+            <h5><i class="bi bi-box-seam text-warning"></i> Productos con stock bajo</h5>
             <table class="table table-sm">
                 <thead><tr><th>Producto</th><th>Stock</th><th>Mínimo</th></tr></thead>
                 <tbody>
