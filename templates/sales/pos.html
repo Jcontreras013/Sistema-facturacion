@@ -75,6 +75,9 @@
 <script>
 const PRODUCTS = {{ products_json|safe }};
 let cart = [];
+let searchMatches = [];
+let searchActiveIndex = -1;
+let cartActiveIndex = -1;
 
 function renderCartTable() {
     const grid = document.getElementById('productGrid');
@@ -82,12 +85,18 @@ function renderCartTable() {
 
     if (cart.length === 0) {
         grid.innerHTML = '<tr><td colspan="6" class="text-muted text-center py-4">Aún no has agregado productos. Búscalos arriba o escanea un código de barras.</td></tr>';
+        cartActiveIndex = -1;
         return;
     }
 
-    cart.forEach(item => {
+    if (cartActiveIndex >= cart.length) {
+        cartActiveIndex = cart.length - 1;
+    }
+
+    cart.forEach((item, index) => {
         const lineSubtotal = item.price * item.quantity;
         const row = document.createElement('tr');
+        row.dataset.cartIndex = index;
         row.innerHTML = `
             <td class="fw-bold">${item.name}</td>
             <td class="text-muted small">${item.code}</td>
@@ -103,34 +112,57 @@ function renderCartTable() {
         input.addEventListener('change', (e) => {
             updateQuantity(parseInt(e.target.dataset.id), parseFloat(e.target.value || '0'));
         });
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                input.blur();
+                searchBox.focus();
+                highlightCartActive();
+            }
+        });
     });
     grid.querySelectorAll('button[data-remove]').forEach(btn => {
         btn.addEventListener('click', (e) => removeFromCart(parseInt(e.currentTarget.dataset.remove)));
+    });
+
+    highlightCartActive();
+}
+
+function highlightCartActive() {
+    const grid = document.getElementById('productGrid');
+    grid.querySelectorAll('tr[data-cart-index]').forEach(row => {
+        const isActive = parseInt(row.dataset.cartIndex) === cartActiveIndex;
+        row.classList.toggle('cart-row-active', isActive);
+        if (isActive) {
+            row.scrollIntoView({ block: 'nearest' });
+        }
     });
 }
 
 function renderProductSearchResults(term) {
     const results = document.getElementById('productSearchResults');
     const t = (term || '').toLowerCase();
+    searchActiveIndex = -1;
 
     if (!t) {
         results.style.display = 'none';
         results.innerHTML = '';
+        searchMatches = [];
         return;
     }
 
-    const matches = PRODUCTS.filter(p =>
+    searchMatches = PRODUCTS.filter(p =>
         p.name.toLowerCase().includes(t) || p.code.toLowerCase().includes(t) || (p.barcode && p.barcode.toLowerCase().includes(t))
     );
 
     results.innerHTML = '';
-    if (!matches.length) {
+    if (!searchMatches.length) {
         results.innerHTML = '<div class="list-group-item text-muted">No se encontraron productos.</div>';
         results.style.display = 'block';
         return;
     }
 
-    matches.forEach(p => {
+    searchMatches.forEach((p, index) => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
@@ -140,15 +172,37 @@ function renderProductSearchResults(term) {
         `;
         btn.addEventListener('mousedown', (e) => {
             e.preventDefault();
-            addToCart(p);
-            searchBox.value = '';
-            results.style.display = 'none';
-            results.innerHTML = '';
-            searchBox.focus();
+            selectSearchMatch(p);
+        });
+        btn.addEventListener('mouseenter', () => {
+            searchActiveIndex = index;
+            highlightSearchActive();
         });
         results.appendChild(btn);
     });
     results.style.display = 'block';
+}
+
+function highlightSearchActive() {
+    const results = document.getElementById('productSearchResults');
+    const items = results.querySelectorAll('button.list-group-item');
+    items.forEach((el, i) => {
+        const isActive = i === searchActiveIndex;
+        el.classList.toggle('active', isActive);
+        if (isActive) {
+            el.scrollIntoView({ block: 'nearest' });
+        }
+    });
+}
+
+function selectSearchMatch(product) {
+    addToCart(product);
+    searchBox.value = '';
+    productSearchResults.style.display = 'none';
+    productSearchResults.innerHTML = '';
+    searchMatches = [];
+    searchActiveIndex = -1;
+    searchBox.focus();
 }
 
 function addToCart(product) {
@@ -310,19 +364,70 @@ selectClient('', 'Consumidor final', '');
 
 const searchBox = document.getElementById('searchBox');
 const productSearchResults = document.getElementById('productSearchResults');
-searchBox.addEventListener('input', (e) => renderProductSearchResults(e.target.value));
+searchBox.addEventListener('input', (e) => {
+    cartActiveIndex = -1;
+    highlightCartActive();
+    renderProductSearchResults(e.target.value);
+});
 searchBox.addEventListener('focus', () => renderProductSearchResults(searchBox.value));
 searchBox.addEventListener('blur', () => {
     productSearchResults.style.display = 'none';
 });
 searchBox.addEventListener('keydown', (e) => {
+    const dropdownOpen = productSearchResults.style.display === 'block' && searchMatches.length > 0;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (dropdownOpen) {
+            searchActiveIndex = Math.min(searchActiveIndex + 1, searchMatches.length - 1);
+            highlightSearchActive();
+        } else if (cart.length > 0) {
+            cartActiveIndex = Math.min(cartActiveIndex + 1, cart.length - 1);
+            highlightCartActive();
+        }
+        return;
+    }
+
+    if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (dropdownOpen) {
+            searchActiveIndex = Math.max(searchActiveIndex - 1, 0);
+            highlightSearchActive();
+        } else if (cartActiveIndex >= 0) {
+            cartActiveIndex -= 1;
+            highlightCartActive();
+        }
+        return;
+    }
+
     if (e.key === 'Enter') {
         e.preventDefault();
+        if (dropdownOpen && searchActiveIndex >= 0) {
+            selectSearchMatch(searchMatches[searchActiveIndex]);
+            return;
+        }
+        if (!searchBox.value && cartActiveIndex >= 0 && cart[cartActiveIndex]) {
+            const row = document.querySelector(`tr[data-cart-index="${cartActiveIndex}"]`);
+            const input = row ? row.querySelector('input[data-id]') : null;
+            if (input) {
+                input.focus();
+                input.select();
+            }
+            return;
+        }
         if (addByBarcodeOrCode(searchBox.value)) {
             searchBox.value = '';
             productSearchResults.style.display = 'none';
             productSearchResults.innerHTML = '';
         }
+        return;
+    }
+
+    if (e.key === 'Escape') {
+        productSearchResults.style.display = 'none';
+        searchActiveIndex = -1;
+        cartActiveIndex = -1;
+        highlightCartActive();
     }
 });
 

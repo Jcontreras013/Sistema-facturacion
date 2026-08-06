@@ -272,6 +272,18 @@ a:hover {
     background-color: var(--brand-light);
 }
 
+.cart-row-active {
+    outline: 2px solid var(--brand);
+    outline-offset: -2px;
+    background-color: var(--brand-light) !important;
+}
+
+#productSearchResults .list-group-item.active {
+    background-color: var(--brand);
+    border-color: var(--brand);
+    color: #fff;
+}
+
 .invoice-box {
     max-width: 720px;
     margin: 0 auto;
