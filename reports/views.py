@@ -7,7 +7,7 @@ from django.shortcuts import render
 
 from core.permissions import admin_required
 from inventory.models import Product
-from sales.models import CashSession, Sale, SaleItem
+from sales.models import CashSession, CreditNoteItem, Sale, SaleItem
 
 
 def _parse_range(request):
@@ -115,35 +115,70 @@ def expiring_products_report(request):
 
 @admin_required
 def tax_report(request):
-    """Resumen de ISV cobrado por tasa, útil para la declaración ante el SAR."""
+    """Resumen de ISV (débito fiscal neto de devoluciones) por tasa, para la declaración mensual ante el SAR."""
     date_from, date_to = _parse_range(request)
-    items = SaleItem.objects.filter(
-        sale__created_at__date__gte=date_from,
-        sale__created_at__date__lte=date_to,
-        sale__status="completada",
+    line_total = ExpressionWrapper(
+        F("quantity") * F("unit_price"), output_field=DecimalField(max_digits=12, decimal_places=2)
     )
-    by_rate = (
-        items.values("tax_rate")
-        .annotate(
-            subtotal=Sum(
-                ExpressionWrapper(F("quantity") * F("unit_price"), output_field=DecimalField(max_digits=12, decimal_places=2))
-            ),
+
+    sales_by_rate = {
+        row["tax_rate"]: row["subtotal"] or Decimal("0")
+        for row in (
+            SaleItem.objects.filter(
+                sale__created_at__date__gte=date_from,
+                sale__created_at__date__lte=date_to,
+                sale__status="completada",
+            )
+            .values("tax_rate")
+            .annotate(subtotal=Sum(line_total))
         )
-        .order_by("tax_rate")
-    )
+    }
+    # Las notas de crédito descuentan del período en que se emiten (no del de la venta original).
+    credit_notes_by_rate = {
+        row["tax_rate"]: row["subtotal"] or Decimal("0")
+        for row in (
+            CreditNoteItem.objects.filter(
+                credit_note__created_at__date__gte=date_from,
+                credit_note__created_at__date__lte=date_to,
+            )
+            .values("tax_rate")
+            .annotate(subtotal=Sum(line_total))
+        )
+    }
+
     rows = []
-    total_tax = Decimal("0")
-    for row in by_rate:
-        rate = row["tax_rate"]
-        subtotal = row["subtotal"] or Decimal("0")
-        tax_amount = (subtotal * rate / Decimal("100")).quantize(Decimal("0.01"))
+    total_sales_base = total_credit_base = total_net_base = total_tax = Decimal("0")
+    for rate in sorted(set(sales_by_rate) | set(credit_notes_by_rate)):
+        sales_base = sales_by_rate.get(rate, Decimal("0"))
+        credit_base = credit_notes_by_rate.get(rate, Decimal("0"))
+        net_base = sales_base - credit_base
+        tax_amount = (net_base * rate / Decimal("100")).quantize(Decimal("0.01"))
+        total_sales_base += sales_base
+        total_credit_base += credit_base
+        total_net_base += net_base
         total_tax += tax_amount
-        rows.append({"tax_rate": rate, "subtotal": subtotal, "tax_amount": tax_amount})
+        rows.append(
+            {
+                "tax_rate": rate,
+                "sales_base": sales_base,
+                "credit_base": credit_base,
+                "net_base": net_base,
+                "tax_amount": tax_amount,
+            }
+        )
 
     return render(
         request,
         "reports/tax_report.html",
-        {"date_from": date_from, "date_to": date_to, "rows": rows, "total_tax": total_tax},
+        {
+            "date_from": date_from,
+            "date_to": date_to,
+            "rows": rows,
+            "total_sales_base": total_sales_base,
+            "total_credit_base": total_credit_base,
+            "total_net_base": total_net_base,
+            "total_tax": total_tax,
+        },
     )
 
 

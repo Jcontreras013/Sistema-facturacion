@@ -18,21 +18,41 @@
 
 <div class="card p-3">
     <table class="table table-sm">
-        <thead><tr><th>Tasa de ISV</th><th>Base gravable</th><th>Impuesto</th></tr></thead>
+        <thead>
+            <tr>
+                <th>Tasa de ISV</th>
+                <th>Ventas gravadas</th>
+                <th>Notas de crédito</th>
+                <th>Base neta</th>
+                <th>ISV a declarar</th>
+            </tr>
+        </thead>
         <tbody>
         {% for row in rows %}
             <tr>
                 <td>{{ row.tax_rate|floatformat:0 }}%</td>
-                <td>L {{ row.subtotal|floatformat:2 }}</td>
+                <td>L {{ row.sales_base|floatformat:2 }}</td>
+                <td class="text-danger">- L {{ row.credit_base|floatformat:2 }}</td>
+                <td>L {{ row.net_base|floatformat:2 }}</td>
                 <td>L {{ row.tax_amount|floatformat:2 }}</td>
             </tr>
         {% empty %}
-            <tr><td colspan="3" class="text-muted">No hay ventas en el período seleccionado.</td></tr>
+            <tr><td colspan="5" class="text-muted">No hay ventas en el período seleccionado.</td></tr>
         {% endfor %}
         </tbody>
         <tfoot>
-            <tr class="fw-bold"><td colspan="2">Total ISV</td><td>L {{ total_tax|floatformat:2 }}</td></tr>
+            <tr class="fw-bold">
+                <td>Total</td>
+                <td>L {{ total_sales_base|floatformat:2 }}</td>
+                <td class="text-danger">- L {{ total_credit_base|floatformat:2 }}</td>
+                <td>L {{ total_net_base|floatformat:2 }}</td>
+                <td>L {{ total_tax|floatformat:2 }}</td>
+            </tr>
         </tfoot>
     </table>
+    <p class="small text-muted mb-0">
+        Este total corresponde al débito fiscal neto de devoluciones (crédito fiscal de tus compras a proveedores no está incluido, ya que el sistema no lleva el ISV pagado en compras).
+        Confirma siempre el formulario y las fechas límite vigentes en el portal del SAR o con tu contador antes de declarar.
+    </p>
 </div>
 {% endblock %}
