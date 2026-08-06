@@ -8,6 +8,25 @@
 
 <div class="row g-4">
     <div class="col-md-7">
+        <input type="text" id="searchBox" class="form-control mb-3" placeholder="Buscar o escanear código de barras... (Enter para agregar)" autofocus>
+        <div class="card" style="max-height: 70vh; overflow-y: auto;">
+            <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="sticky-top bg-white">
+                    <tr>
+                        <th>Producto</th>
+                        <th>Código</th>
+                        <th class="text-end">Precio</th>
+                        <th class="text-end">Cantidad</th>
+                        <th class="text-end">Subtotal</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="productGrid"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="col-md-5">
         <form method="post" id="saleForm">
             {% csrf_token %}
 
@@ -36,11 +55,6 @@
             </div>
 
             <div class="card p-3">
-                <h6>Carrito</h6>
-                <table class="table table-sm" id="cartTable">
-                    <thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subt.</th><th></th></tr></thead>
-                    <tbody id="cartBody"></tbody>
-                </table>
                 <div class="d-flex justify-content-between"><span>Subtotal</span><strong id="cartSubtotal">L 0.00</strong></div>
                 <div class="d-flex justify-content-between"><span>Impuesto (ISV)</span><strong id="cartTax">L 0.00</strong></div>
                 <div class="d-flex justify-content-between fs-5"><span>Total</span><strong id="cartTotal">L 0.00</strong></div>
@@ -50,23 +64,6 @@
                 <div id="posMessage" class="alert mt-2 mb-0" style="display:none;"></div>
             </div>
         </form>
-    </div>
-
-    <div class="col-md-5">
-        <input type="text" id="searchBox" class="form-control mb-3" placeholder="Buscar o escanear código de barras... (Enter para agregar)" autofocus>
-        <div class="card" style="max-height: 65vh; overflow-y: auto;">
-            <table class="table table-sm table-hover align-middle mb-0">
-                <thead class="sticky-top bg-white">
-                    <tr>
-                        <th>Producto</th>
-                        <th>Código</th>
-                        <th class="text-end">Precio</th>
-                        <th class="text-end">Stock</th>
-                    </tr>
-                </thead>
-                <tbody id="productGrid"></tbody>
-            </table>
-        </div>
     </div>
 </div>
 {% endblock %}
@@ -80,31 +77,61 @@ function renderProducts(filter) {
     const grid = document.getElementById('productGrid');
     grid.innerHTML = '';
     const term = (filter || '').toLowerCase();
+    const cartIds = new Set(cart.map(i => i.id));
 
-    if (!term) {
-        grid.innerHTML = '<tr><td colspan="4" class="text-muted text-center py-4">Escribe un nombre o código, o escanea un código de barras para ver productos.</td></tr>';
-        return;
-    }
-
-    const matches = PRODUCTS.filter(p => p.name.toLowerCase().includes(term) || p.code.toLowerCase().includes(term) || (p.barcode && p.barcode.toLowerCase().includes(term)));
-
-    if (!matches.length) {
-        grid.innerHTML = '<tr><td colspan="4" class="text-muted text-center py-4">No se encontraron productos.</td></tr>';
-        return;
-    }
-
-    matches.forEach(p => {
+    cart.forEach(item => {
+        const lineSubtotal = item.price * item.quantity;
         const row = document.createElement('tr');
-        row.className = 'pos-product-card';
-        row.dataset.id = p.id;
+        row.className = 'table-success-subtle';
         row.innerHTML = `
-            <td class="fw-bold">${p.name}</td>
-            <td class="text-muted small">${p.code}</td>
-            <td class="text-end text-success">L ${parseFloat(p.price).toFixed(2)}</td>
-            <td class="text-end small">${p.stock} ${p.unit}</td>
+            <td class="fw-bold">${item.name}</td>
+            <td class="text-muted small">${item.code}</td>
+            <td class="text-end text-success">L ${item.price.toFixed(2)}</td>
+            <td class="text-end"><input type="number" min="0" step="1" value="${item.quantity}" class="form-control form-control-sm ms-auto" style="width:80px" data-id="${item.id}"></td>
+            <td class="text-end">L ${lineSubtotal.toFixed(2)}</td>
+            <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-remove="${item.id}"><i class="bi bi-x"></i></button></td>
         `;
-        row.addEventListener('click', () => addToCart(p));
         grid.appendChild(row);
+    });
+
+    if (term) {
+        const matches = PRODUCTS.filter(p =>
+            !cartIds.has(p.id) &&
+            (p.name.toLowerCase().includes(term) || p.code.toLowerCase().includes(term) || (p.barcode && p.barcode.toLowerCase().includes(term)))
+        );
+        matches.forEach(p => {
+            const row = document.createElement('tr');
+            row.className = 'pos-product-card';
+            row.dataset.id = p.id;
+            row.innerHTML = `
+                <td class="fw-bold">${p.name}</td>
+                <td class="text-muted small">${p.code}</td>
+                <td class="text-end text-success">L ${parseFloat(p.price).toFixed(2)}</td>
+                <td class="text-end small" colspan="2">Stock: ${p.stock} ${p.unit}</td>
+                <td></td>
+            `;
+            row.addEventListener('click', () => addToCart(p));
+            grid.appendChild(row);
+        });
+    }
+
+    if (cart.length === 0 && !term) {
+        grid.innerHTML = '<tr><td colspan="6" class="text-muted text-center py-4">Escribe un nombre o código, o escanea un código de barras para ver productos.</td></tr>';
+    } else if (cart.length === 0 && term && grid.children.length === 0) {
+        grid.innerHTML = '<tr><td colspan="6" class="text-muted text-center py-4">No se encontraron productos.</td></tr>';
+    }
+
+    grid.querySelectorAll('input[data-id]').forEach(input => {
+        input.addEventListener('click', (e) => e.stopPropagation());
+        input.addEventListener('change', (e) => {
+            updateQuantity(parseInt(e.target.dataset.id), parseFloat(e.target.value || '0'));
+        });
+    });
+    grid.querySelectorAll('button[data-remove]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            removeFromCart(parseInt(e.currentTarget.dataset.remove));
+        });
     });
 }
 
@@ -118,13 +145,15 @@ function addToCart(product) {
         cart.push({
             id: product.id,
             name: product.name,
+            code: product.code,
             price: parseFloat(product.price),
             taxRate: parseFloat(product.tax_rate),
             stock: parseFloat(product.stock),
             quantity: 1,
         });
     }
-    renderCart();
+    renderProducts(searchBox.value);
+    updateSummary();
 }
 
 function addByBarcodeOrCode(term) {
@@ -146,44 +175,24 @@ function updateQuantity(id, quantity) {
     if (item.quantity === 0) {
         cart = cart.filter(i => i.id !== id);
     }
-    renderCart();
+    renderProducts(searchBox.value);
+    updateSummary();
 }
 
 function removeFromCart(id) {
     cart = cart.filter(i => i.id !== id);
-    renderCart();
+    renderProducts(searchBox.value);
+    updateSummary();
 }
 
-function renderCart() {
-    const body = document.getElementById('cartBody');
-    body.innerHTML = '';
+function updateSummary() {
     let subtotal = 0;
     let tax = 0;
     cart.forEach(item => {
         const lineSubtotal = item.price * item.quantity;
-        const lineTax = lineSubtotal * (item.taxRate / 100);
         subtotal += lineSubtotal;
-        tax += lineTax;
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${item.name}</td>
-            <td><input type="number" min="0" step="1" value="${item.quantity}" class="form-control form-control-sm" style="width:70px" data-id="${item.id}"></td>
-            <td>L ${item.price.toFixed(2)}</td>
-            <td>L ${lineSubtotal.toFixed(2)}</td>
-            <td><button type="button" class="btn btn-sm btn-outline-danger" data-remove="${item.id}"><i class="bi bi-x"></i></button></td>
-        `;
-        body.appendChild(row);
+        tax += lineSubtotal * (item.taxRate / 100);
     });
-
-    body.querySelectorAll('input[data-id]').forEach(input => {
-        input.addEventListener('change', (e) => {
-            updateQuantity(parseInt(e.target.dataset.id), parseFloat(e.target.value || '0'));
-        });
-    });
-    body.querySelectorAll('button[data-remove]').forEach(btn => {
-        btn.addEventListener('click', (e) => removeFromCart(parseInt(e.currentTarget.dataset.remove)));
-    });
-
     const total = subtotal + tax;
     document.getElementById('cartSubtotal').textContent = 'L ' + subtotal.toFixed(2);
     document.getElementById('cartTax').textContent = 'L ' + tax.toFixed(2);
@@ -308,7 +317,8 @@ function showPosMessage(text, variant) {
 
 function resetSaleForm() {
     cart = [];
-    renderCart();
+    renderProducts(searchBox.value);
+    updateSummary();
     selectClient('', 'Consumidor final', '');
     notesInput.value = '';
 }
@@ -349,6 +359,6 @@ document.getElementById('saleForm').addEventListener('submit', async (e) => {
 });
 
 renderProducts('');
-renderCart();
+updateSummary();
 </script>
 {% endblock %}
