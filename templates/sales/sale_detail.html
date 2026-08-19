@@ -59,6 +59,7 @@
     {% if sale.notes %}<p class="mt-3"><strong>Notas:</strong> {{ sale.notes }}</p>{% endif %}
 
     <div class="mt-4 no-print">
+        <a href="{% url 'sales:pos' %}" class="btn btn-success btn-lg"><i class="bi bi-cash-register"></i> Nueva venta</a>
         <button onclick="window.print()" class="btn btn-outline-secondary"><i class="bi bi-printer"></i> Imprimir</button>
         <a href="{% url 'sales:sale_list' %}" class="btn btn-outline-secondary">Volver a ventas</a>
         {% if sale.status == "completada" and is_admin %}

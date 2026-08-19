@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Stock bajo{% endblock %}
 {% block content %}
-<h2><i class="bi bi-exclamation-triangle"></i> Productos con stock bajo</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-exclamation-triangle"></i> Productos con stock bajo</h2>
+    <a href="?export=xlsx" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> Descargar</a>
+</div>
 <div class="card p-3">
     <table class="table table-sm">
         <thead><tr><th>Código</th><th>Producto</th><th>Stock actual</th><th>Stock mínimo</th><th>Proveedor</th></tr></thead>
