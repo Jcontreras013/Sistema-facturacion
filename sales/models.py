@@ -62,6 +62,7 @@ class Sale(models.Model):
         ("efectivo", "Efectivo"),
         ("tarjeta", "Tarjeta"),
         ("transferencia", "Transferencia"),
+        ("credito", "Crédito (fiado)"),
     ]
     STATUS_CHOICES = [
         ("completada", "Completada"),

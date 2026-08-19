@@ -13,8 +13,63 @@
             </table>
             <a href="{% url 'clients:client_update' client.pk %}" class="btn btn-outline-secondary btn-sm mt-2"><i class="bi bi-pencil"></i> Editar</a>
         </div>
+
+        {% if client.has_credit_enabled or credit_balance > 0 %}
+        <div class="card p-3 mt-3">
+            <h6><i class="bi bi-wallet2"></i> Crédito (fiado)</h6>
+            <table class="table table-sm mb-2">
+                <tr><th>Límite</th><td>L {{ client.credit_limit|floatformat:2 }}</td></tr>
+                <tr><th>Debe</th><td class="{% if credit_balance > 0 %}text-danger fw-bold{% endif %}">L {{ credit_balance|floatformat:2 }}</td></tr>
+                <tr><th>Disponible</th><td>L {{ credit_available|floatformat:2 }}</td></tr>
+            </table>
+            {% if credit_balance > 0 %}
+            <a href="{% url 'clients:credit_payment_create' client.pk %}" class="btn btn-success btn-sm"><i class="bi bi-cash"></i> Registrar abono</a>
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
     <div class="col-md-8">
+        {% if credit_sales or payments %}
+        <div class="card p-3 mb-3">
+            <h6><i class="bi bi-wallet2"></i> Cuenta de crédito</h6>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="small text-muted mb-1">Ventas al crédito</div>
+                    <table class="table table-sm">
+                        <thead><tr><th>No.</th><th>Fecha</th><th>Total</th></tr></thead>
+                        <tbody>
+                        {% for sale in credit_sales %}
+                            <tr>
+                                <td><a href="{% url 'sales:sale_detail' sale.pk %}">{{ sale.number }}</a></td>
+                                <td>{{ sale.created_at|date:"d/m/Y" }}</td>
+                                <td>L {{ sale.total|floatformat:2 }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="3" class="text-muted">Sin ventas al crédito.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <div class="small text-muted mb-1">Abonos registrados</div>
+                    <table class="table table-sm">
+                        <thead><tr><th>Fecha</th><th>Monto</th><th>Forma</th></tr></thead>
+                        <tbody>
+                        {% for payment in payments %}
+                            <tr>
+                                <td>{{ payment.created_at|date:"d/m/Y" }}</td>
+                                <td>L {{ payment.amount|floatformat:2 }}</td>
+                                <td>{{ payment.get_payment_method_display }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="3" class="text-muted">Sin abonos registrados.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
         <div class="card p-3">
             <h6>Historial de compras</h6>
             <table class="table table-sm">

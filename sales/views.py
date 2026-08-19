@@ -35,6 +35,18 @@ def _create_sale(user, open_session, cart, client_id, client_rtn, new_client_nam
         elif client_id and client_rtn:
             Client.objects.filter(pk=client_id, document="").update(document=client_rtn)
 
+        credit_client = None
+        credit_available = None
+        if payment_method == "credito":
+            if not client_id:
+                raise ValueError("Selecciona un cliente para vender al crédito (fiado).")
+            credit_client = get_object_or_404(Client, pk=client_id)
+            if not credit_client.has_credit_enabled:
+                raise ValueError(
+                    f"'{credit_client.name}' no tiene crédito habilitado. Configura su límite de crédito en Clientes."
+                )
+            credit_available = credit_client.credit_available()
+
         sale = Sale.objects.create(
             client_id=client_id,
             user=user,
@@ -65,6 +77,12 @@ def _create_sale(user, open_session, cart, client_id, client_rtn, new_client_nam
                 user=user,
             )
         sale.recalculate_totals()
+
+        if payment_method == "credito" and sale.total > credit_available:
+            raise ValueError(
+                f"'{credit_client.name}' no tiene suficiente crédito disponible "
+                f"(disponible: L {credit_available:.2f}, venta: L {sale.total:.2f})."
+            )
     log_action(user, "created", sale)
     return sale
 
@@ -126,7 +144,16 @@ def pos(request):
         for p in products
     ]
     clients = Client.objects.filter(is_active=True).order_by("name")
-    clients_data = [{"id": c.id, "name": c.name, "document": c.document or ""} for c in clients]
+    clients_data = [
+        {
+            "id": c.id,
+            "name": c.name,
+            "document": c.document or "",
+            "credit_limit": str(c.credit_limit),
+            "credit_available": str(c.credit_available()),
+        }
+        for c in clients
+    ]
     return render(
         request,
         "sales/pos.html",

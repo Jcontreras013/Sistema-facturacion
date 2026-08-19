@@ -46,9 +46,10 @@
                 <label class="form-label">RTN del cliente</label>
                 <input type="text" name="client_rtn" id="clientRtn" class="form-control mb-1" placeholder="Selecciona un cliente para agregar su RTN" disabled>
                 <div class="small text-muted mb-2" id="rtnHint"></div>
+                <div class="small mb-2" id="creditHint" style="display:none;"></div>
 
                 <label class="form-label">Forma de pago</label>
-                <select name="payment_method" class="form-select mb-2">
+                <select name="payment_method" id="paymentMethodSelect" class="form-select mb-2">
                     {% for value, label in payment_methods %}
                         <option value="{{ value }}">{{ label }}</option>
                     {% endfor %}
@@ -277,8 +278,44 @@ const clientResults = document.getElementById('clientResults');
 const clientRtn = document.getElementById('clientRtn');
 const rtnHint = document.getElementById('rtnHint');
 const newClientName = document.getElementById('newClientName');
+const paymentMethodSelect = document.getElementById('paymentMethodSelect');
 
-let currentClient = { value: '', name: 'Consumidor final', document: '' };
+let currentClient = { value: '', name: 'Consumidor final', document: '', creditLimit: '0', creditAvailable: '0' };
+
+function renderCreditHint() {
+    const creditHint = document.getElementById('creditHint');
+    const isRealClient = currentClient.value && currentClient.value !== '__new__';
+    const paymentMethodValue = paymentMethodSelect.value;
+
+    if (!isRealClient) {
+        creditHint.style.display = 'none';
+        return;
+    }
+
+    const limit = parseFloat(currentClient.creditLimit || '0');
+    const available = parseFloat(currentClient.creditAvailable || '0');
+    const balance = Math.max(0, limit - available);
+
+    if (limit <= 0) {
+        if (paymentMethodValue === 'credito') {
+            creditHint.className = 'small mb-2 text-danger';
+            creditHint.textContent = 'Este cliente no tiene crédito habilitado. Asígnale un límite desde Clientes.';
+            creditHint.style.display = 'block';
+        } else {
+            creditHint.style.display = 'none';
+        }
+        return;
+    }
+
+    creditHint.style.display = 'block';
+    if (available <= 0) {
+        creditHint.className = 'small mb-2 text-danger';
+        creditHint.textContent = `Crédito agotado: debe L ${balance.toFixed(2)} de L ${limit.toFixed(2)}.`;
+    } else {
+        creditHint.className = 'small mb-2 text-muted';
+        creditHint.textContent = `Crédito: debe L ${balance.toFixed(2)} de L ${limit.toFixed(2)} — disponible L ${available.toFixed(2)}.`;
+    }
+}
 
 function syncClientRtn() {
     const isNew = clientIdInput.value === '__new__';
@@ -316,21 +353,26 @@ function syncClientRtn() {
     }
 }
 
-function selectClient(value, name, document_) {
+function selectClient(value, name, document_, creditLimit, creditAvailable) {
     clientIdInput.value = value;
     clientSearch.value = name;
-    currentClient = { value, name, document: document_ || '' };
+    currentClient = {
+        value, name, document: document_ || '',
+        creditLimit: creditLimit || '0',
+        creditAvailable: creditAvailable != null ? creditAvailable : '0',
+    };
     clientResults.style.display = 'none';
     syncClientRtn();
+    renderCreditHint();
 }
 
 function renderClientResults(term) {
     const t = (term || '').toLowerCase();
     const items = [];
-    items.push({ value: '', name: 'Consumidor final', document: '' });
-    items.push({ value: '__new__', name: '+ Nuevo cliente...', document: '' });
+    items.push({ value: '', name: 'Consumidor final', document: '', credit_limit: '0', credit_available: '0' });
+    items.push({ value: '__new__', name: '+ Nuevo cliente...', document: '', credit_limit: '0', credit_available: '0' });
     CLIENTS.filter(c => c.name.toLowerCase().includes(t)).forEach(c => {
-        items.push({ value: String(c.id), name: c.name, document: c.document });
+        items.push({ value: String(c.id), name: c.name, document: c.document, credit_limit: c.credit_limit, credit_available: c.credit_available });
     });
 
     clientResults.innerHTML = '';
@@ -341,7 +383,7 @@ function renderClientResults(term) {
         btn.textContent = item.name;
         btn.addEventListener('mousedown', (e) => {
             e.preventDefault();
-            selectClient(item.value, item.name, item.document);
+            selectClient(item.value, item.name, item.document, item.credit_limit, item.credit_available);
         });
         clientResults.appendChild(btn);
     });
@@ -359,6 +401,8 @@ clientSearch.addEventListener('blur', () => {
         clientSearch.value = currentClient.name;
     }
 });
+
+paymentMethodSelect.addEventListener('change', renderCreditHint);
 
 selectClient('', 'Consumidor final', '');
 
@@ -434,7 +478,6 @@ searchBox.addEventListener('keydown', (e) => {
 const checkoutBtn = document.getElementById('checkoutBtn');
 const posMessage = document.getElementById('posMessage');
 const notesInput = document.querySelector('input[name="notes"]');
-const paymentSelect = document.querySelector('select[name="payment_method"]');
 
 function showPosMessage(text, variant) {
     posMessage.className = 'alert alert-' + variant + ' mt-2 mb-0';
@@ -459,7 +502,7 @@ document.getElementById('saleForm').addEventListener('submit', async (e) => {
         client_id: clientIdInput.value,
         client_rtn: clientRtn.value,
         new_client_name: newClientName.value,
-        payment_method: paymentSelect.value,
+        payment_method: paymentMethodSelect.value,
         notes: notesInput.value,
     };
 

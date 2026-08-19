@@ -5,6 +5,7 @@ from django.db.models import DecimalField, ExpressionWrapper, F, Sum
 from django.db.models.functions import TruncDate
 from django.shortcuts import render
 
+from clients.models import Client
 from core.permissions import admin_required
 from inventory.models import Product
 from sales.models import CashSession, CreditNoteItem, Sale, SaleItem
@@ -192,4 +193,29 @@ def cash_flow_report(request):
         request,
         "reports/cash_flow_report.html",
         {"date_from": date_from, "date_to": date_to, "sessions": sessions},
+    )
+
+
+@admin_required
+def accounts_receivable_report(request):
+    """Clientes con saldo pendiente por ventas al crédito (fiado)."""
+    rows = []
+    total_receivable = Decimal("0")
+    for client in Client.objects.filter(credit_limit__gt=0).order_by("name"):
+        balance = client.credit_balance()
+        if balance > 0:
+            total_receivable += balance
+            rows.append(
+                {
+                    "client": client,
+                    "balance": balance,
+                    "limit": client.credit_limit,
+                    "available": client.credit_limit - balance,
+                }
+            )
+    rows.sort(key=lambda r: r["balance"], reverse=True)
+    return render(
+        request,
+        "reports/accounts_receivable_report.html",
+        {"rows": rows, "total_receivable": total_receivable},
     )

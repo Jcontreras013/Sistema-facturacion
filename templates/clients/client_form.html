@@ -25,6 +25,13 @@
             <label class="form-label">{{ form.address.label }}</label>
             {{ form.address }}
         </div>
+        {% if form.credit_limit %}
+        <div class="mb-3">
+            <label class="form-label">{{ form.credit_limit.label }}</label>
+            {{ form.credit_limit }}
+            <div class="form-text">{{ form.credit_limit.help_text }}</div>
+        </div>
+        {% endif %}
         <div class="mb-3 form-check">
             {{ form.is_active }}
             <label class="form-check-label">{{ form.is_active.label }}</label>
