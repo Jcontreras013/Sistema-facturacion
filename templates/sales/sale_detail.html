@@ -131,6 +131,17 @@
 </div>
 {% endif %}
 </div>
+
+{% if autoprint and sale.status == "completada" %}
+<div id="thankYouOverlay" class="no-print" style="display:none; position:fixed; inset:0; background:rgba(10,40,25,0.92); z-index:2000; align-items:center; justify-content:center;">
+    <div class="text-center text-white p-4">
+        <div style="font-size:4.5rem; line-height:1;"><i class="bi bi-check-circle-fill"></i></div>
+        <h1 class="fw-bold mt-3 mb-2">¡Gracias por su compra!</h1>
+        <p class="mb-4 fs-5 opacity-75">Presiona Enter para continuar</p>
+        <a href="{% url 'sales:pos' %}" id="thankYouBtn" class="btn btn-light btn-lg px-5"><i class="bi bi-cash-register"></i> Nueva venta</a>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
@@ -139,6 +150,22 @@
 window.addEventListener('load', function () {
     window.print();
 });
+{% if sale.status == "completada" %}
+let thankYouShown = false;
+function showThankYouOverlay() {
+    if (thankYouShown) return;
+    thankYouShown = true;
+    document.getElementById('thankYouOverlay').style.display = 'flex';
+}
+window.addEventListener('afterprint', showThankYouOverlay);
+// Respaldo por si el navegador no dispara "afterprint" (p. ej. diálogo bloqueado).
+setTimeout(showThankYouOverlay, 4000);
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && thankYouShown) {
+        window.location = "{% url 'sales:pos' %}";
+    }
+});
+{% endif %}
 </script>
 {% endif %}
 {% endblock %}
