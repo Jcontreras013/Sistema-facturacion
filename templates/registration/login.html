@@ -1,35 +1,58 @@
 {% extends "base.html" %}
 {% block title %}Iniciar sesión{% endblock %}
 {% block content %}
-<div class="auth-shell" style="margin: -1.5rem;">
-    <div class="auth-card">
-        <div class="text-center mb-4">
+<div class="auth-split" style="margin: -1.5rem;">
+    <div class="auth-brand-panel d-none d-lg-flex">
+        <div class="auth-brand-inner">
             <div class="auth-badge"><i class="bi bi-shop"></i></div>
-            <h4 class="mb-1">Mini Market</h4>
-            <p class="text-muted mb-0">Sistema de Facturación</p>
+            <h1 class="auth-brand-title">Mini Market POS</h1>
+            <p class="auth-brand-tagline">Sistema de facturación e inventario para mini markets y pulperías.</p>
+            <ul class="auth-feature-list">
+                <li><i class="bi bi-patch-check-fill"></i> Facturación conforme al régimen del SAR</li>
+                <li><i class="bi bi-patch-check-fill"></i> Control de inventario en tiempo real</li>
+                <li><i class="bi bi-patch-check-fill"></i> Sigue funcionando aunque se corte el internet</li>
+            </ul>
         </div>
-        {% if form.errors %}
-            <div class="alert alert-danger py-2"><i class="bi bi-exclamation-triangle"></i> Usuario o contraseña incorrectos.</div>
-        {% endif %}
-        <form method="post">
-            {% csrf_token %}
-            <div class="mb-3">
-                <label class="form-label">Usuario</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-white"><i class="bi bi-person"></i></span>
-                    <input type="text" name="username" class="form-control" required autofocus>
-                </div>
+        <div class="auth-blob auth-blob-1"></div>
+        <div class="auth-blob auth-blob-2"></div>
+    </div>
+
+    <div class="auth-form-panel">
+        <div class="auth-form-wrap">
+            <div class="d-lg-none text-center mb-4">
+                <div class="auth-badge mx-auto"><i class="bi bi-shop"></i></div>
+                <h5 class="mt-2 mb-0 fw-bold">Mini Market POS</h5>
             </div>
-            <div class="mb-4">
-                <label class="form-label">Contraseña</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-white"><i class="bi bi-lock"></i></span>
-                    <input type="password" name="password" class="form-control" required>
+
+            <h2 class="fw-bold mb-1">Bienvenido de nuevo</h2>
+            <p class="text-muted mb-4">Ingresa tus credenciales para continuar</p>
+
+            {% if form.errors %}
+                <div class="alert alert-danger py-2"><i class="bi bi-exclamation-triangle"></i> Usuario o contraseña incorrectos.</div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Usuario</label>
+                    <div class="input-group auth-input-group">
+                        <span class="input-group-text"><i class="bi bi-person"></i></span>
+                        <input type="text" name="username" class="form-control" required autofocus placeholder="tu.usuario">
+                    </div>
                 </div>
-            </div>
-            <input type="hidden" name="next" value="{{ next }}">
-            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-box-arrow-in-right"></i> Ingresar</button>
-        </form>
+                <div class="mb-4">
+                    <label class="form-label">Contraseña</label>
+                    <div class="input-group auth-input-group">
+                        <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                        <input type="password" name="password" class="form-control" required placeholder="••••••••">
+                    </div>
+                </div>
+                <input type="hidden" name="next" value="{{ next }}">
+                <button type="submit" class="btn btn-primary w-100 auth-submit"><i class="bi bi-box-arrow-in-right"></i> Ingresar</button>
+            </form>
+
+            <p class="auth-footer-note">Mini Market POS &middot; Sistema de Facturación</p>
+        </div>
     </div>
 </div>
 {% endblock %}
