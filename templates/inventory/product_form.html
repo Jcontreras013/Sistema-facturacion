@@ -1,7 +1,15 @@
 {% extends "base.html" %}
 {% block title %}{{ title }}{% endblock %}
 {% block content %}
-<h2>{{ title }}</h2>
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-box-seam"></i></div>
+        <div>
+            <h2>{{ title }}</h2>
+            <p class="page-header-subtitle">Datos, precios e inventario del producto</p>
+        </div>
+    </div>
+</div>
 <div class="card p-4" style="max-width: 700px;">
     <form method="post">
         {% csrf_token %}

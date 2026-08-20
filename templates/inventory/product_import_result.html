@@ -1,24 +1,35 @@
 {% extends "base.html" %}
 {% block title %}Resultado de la importación{% endblock %}
 {% block content %}
-<h2><i class="bi bi-check-circle"></i> Importación completada</h2>
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-check-circle"></i></div>
+        <div>
+            <h2>Importación completada</h2>
+            <p class="page-header-subtitle">Resumen de productos creados y actualizados</p>
+        </div>
+    </div>
+</div>
 
 <div class="row g-3 mb-4">
     <div class="col-md-4">
-        <div class="card p-3 bg-success text-white">
-            <div class="small">Productos creados</div>
+        <div class="card stat-card stat-brand p-3 text-white">
+            <i class="bi bi-plus-circle stat-icon"></i>
+            <div class="small opacity-75">Productos creados</div>
             <div class="fs-3 fw-bold">{{ created }}</div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card p-3 bg-info text-white">
-            <div class="small">Productos actualizados</div>
+        <div class="card stat-card stat-blue p-3 text-white">
+            <i class="bi bi-arrow-repeat stat-icon"></i>
+            <div class="small opacity-75">Productos actualizados</div>
             <div class="fs-3 fw-bold">{{ updated }}</div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card p-3 {% if skipped %}bg-warning{% else %}bg-secondary{% endif %} text-white">
-            <div class="small">Filas omitidas</div>
+        <div class="card stat-card {% if skipped %}stat-amber{% else %}stat-slate{% endif %} p-3 text-white">
+            <i class="bi bi-skip-forward stat-icon"></i>
+            <div class="small opacity-75">Filas omitidas</div>
             <div class="fs-3 fw-bold">{{ skipped }}</div>
         </div>
     </div>

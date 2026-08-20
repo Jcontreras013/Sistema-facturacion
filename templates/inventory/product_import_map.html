@@ -1,12 +1,19 @@
 {% extends "base.html" %}
 {% block title %}Mapear columnas{% endblock %}
 {% block content %}
-<h2><i class="bi bi-arrow-left-right"></i> Revisa cómo se leerá tu archivo</h2>
-<p class="text-muted">
-    Detectamos {{ total_rows }} fila(s) en <strong>{{ original_name }}</strong>. Ya intentamos adivinar qué es cada
-    columna — corrige cualquiera que no haya quedado bien antes de confirmar. Solo se muestran las primeras
-    {{ preview_rows|length }} filas como ejemplo.
-</p>
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-arrow-left-right"></i></div>
+        <div>
+            <h2>Revisa cómo se leerá tu archivo</h2>
+            <p class="page-header-subtitle">
+                Detectamos {{ total_rows }} fila(s) en <strong>{{ original_name }}</strong>. Ya intentamos adivinar qué es cada
+                columna — corrige cualquiera que no haya quedado bien antes de confirmar. Solo se muestran las primeras
+                {{ preview_rows|length }} filas como ejemplo.
+            </p>
+        </div>
+    </div>
+</div>
 
 <form method="post">
     {% csrf_token %}

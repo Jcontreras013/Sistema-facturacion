@@ -1,60 +1,80 @@
 {% extends "base.html" %}
 {% block title %}Reporte de ventas{% endblock %}
 {% block content %}
-<h2><i class="bi bi-bar-chart"></i> Ventas por período</h2>
-<form class="row g-2 mb-3">
-    <div class="col-md-3">
-        <label class="form-label small">Desde</label>
-        <input type="date" name="from" value="{{ date_from|date:'Y-m-d' }}" class="form-control">
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-bar-chart"></i></div>
+        <div>
+            <h2>Ventas por período</h2>
+            <p class="page-header-subtitle">Total vendido, facturas emitidas y desglose diario</p>
+        </div>
     </div>
-    <div class="col-md-3">
-        <label class="form-label small">Hasta</label>
-        <input type="date" name="to" value="{{ date_to|date:'Y-m-d' }}" class="form-control">
-    </div>
-    <div class="col-md-2 d-flex align-items-end">
-        <button class="btn btn-outline-secondary w-100" type="submit">Filtrar</button>
-    </div>
-    <div class="col-md-2 d-flex align-items-end">
-        <a href="?from={{ date_from|date:'Y-m-d' }}&to={{ date_to|date:'Y-m-d' }}&export=xlsx" class="btn btn-outline-success w-100"><i class="bi bi-file-earmark-excel"></i> Descargar</a>
-    </div>
-</form>
+</div>
+
+<div class="card p-3 mb-3">
+    <form class="row g-2">
+        <div class="col-md-3">
+            <label class="form-label small">Desde</label>
+            <input type="date" name="from" value="{{ date_from|date:'Y-m-d' }}" class="form-control">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small">Hasta</label>
+            <input type="date" name="to" value="{{ date_to|date:'Y-m-d' }}" class="form-control">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-outline-secondary w-100" type="submit">Filtrar</button>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <a href="?from={{ date_from|date:'Y-m-d' }}&to={{ date_to|date:'Y-m-d' }}&export=xlsx" class="btn btn-outline-success w-100"><i class="bi bi-file-earmark-excel"></i> Descargar</a>
+        </div>
+    </form>
+</div>
 
 <div class="row g-3 mb-4">
     <div class="col-md-3">
-        <div class="card stat-card p-3 bg-primary text-white">
-            <div class="small">Facturas</div>
+        <div class="card stat-card stat-brand p-3 text-white">
+            <i class="bi bi-receipt stat-icon"></i>
+            <div class="small opacity-75">Facturas</div>
             <div class="fs-3 fw-bold">{{ sales_count }}</div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card stat-card p-3 bg-success text-white">
-            <div class="small">Total vendido</div>
+        <div class="card stat-card stat-teal p-3 text-white">
+            <i class="bi bi-cash-coin stat-icon"></i>
+            <div class="small opacity-75">Total vendido</div>
             <div class="fs-3 fw-bold">L {{ totals.total_ventas|default:0|floatformat:2 }}</div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card stat-card p-3 bg-info text-white">
-            <div class="small">Subtotal</div>
+        <div class="card stat-card stat-blue p-3 text-white">
+            <i class="bi bi-calculator stat-icon"></i>
+            <div class="small opacity-75">Subtotal</div>
             <div class="fs-3 fw-bold">L {{ totals.total_subtotal|default:0|floatformat:2 }}</div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card stat-card p-3 bg-secondary text-white">
-            <div class="small">Impuesto</div>
+        <div class="card stat-card stat-slate p-3 text-white">
+            <i class="bi bi-percent stat-icon"></i>
+            <div class="small opacity-75">Impuesto</div>
             <div class="fs-3 fw-bold">L {{ totals.total_tax|default:0|floatformat:2 }}</div>
         </div>
     </div>
 </div>
 
 <div class="card p-3">
-    <h6>Ventas por día</h6>
+    <div class="card-section-title"><i class="bi bi-calendar3"></i> Ventas por día</div>
     <table class="table table-sm">
         <thead><tr><th>Fecha</th><th>Total</th></tr></thead>
         <tbody>
         {% for row in daily %}
             <tr><td>{{ row.day|date:"d/m/Y" }}</td><td>L {{ row.total|floatformat:2 }}</td></tr>
         {% empty %}
-            <tr><td colspan="2" class="text-muted">No hay ventas en el período seleccionado.</td></tr>
+            <tr><td colspan="2">
+                <div class="empty-state py-4">
+                    <i class="bi bi-bar-chart"></i>
+                    <p>No hay ventas en el período seleccionado.</p>
+                </div>
+            </td></tr>
         {% endfor %}
         </tbody>
     </table>

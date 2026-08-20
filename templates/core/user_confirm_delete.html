@@ -1,13 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Eliminar usuario{% endblock %}
 {% block content %}
-<h2>Eliminar usuario</h2>
-<div class="card p-4" style="max-width: 500px;">
+<div class="confirm-delete-wrap">
+<div class="card confirm-delete-card">
+    <div class="confirm-delete-icon"><i class="bi bi-exclamation-triangle"></i></div>
+    <h2>Eliminar usuario</h2>
     <p>¿Seguro que deseas eliminar al usuario <strong>{{ user_obj.username }}</strong>? Esta acción no se puede deshacer.</p>
-    <form method="post">
+    <form method="post" class="confirm-delete-actions">
         {% csrf_token %}
         <button type="submit" class="btn btn-danger">Sí, eliminar</button>
         <a href="{% url 'core:user_list' %}" class="btn btn-outline-secondary">Cancelar</a>
     </form>
+</div>
 </div>
 {% endblock %}

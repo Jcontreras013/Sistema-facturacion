@@ -1,9 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Productos por vencer{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="bi bi-calendar-x"></i> Productos vencidos o por vencer</h2>
-    <a href="?export=xlsx" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> Descargar</a>
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-calendar-x"></i></div>
+        <div>
+            <h2>Productos vencidos o por vencer</h2>
+            <p class="page-header-subtitle">Vencidos o dentro de los próximos 30 días</p>
+        </div>
+    </div>
+    <div class="page-header-actions">
+        <a href="?export=xlsx" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> Descargar</a>
+    </div>
 </div>
 <div class="card p-3">
     <table class="table table-sm">
@@ -21,7 +29,12 @@
                 <td>{{ product.stock }} {{ product.get_unit_display }}</td>
             </tr>
         {% empty %}
-            <tr><td colspan="5" class="text-muted">No hay productos vencidos ni próximos a vencer.</td></tr>
+            <tr><td colspan="5">
+                <div class="empty-state py-4">
+                    <i class="bi bi-check2-circle"></i>
+                    <p>No hay productos vencidos ni próximos a vencer.</p>
+                </div>
+            </td></tr>
         {% endfor %}
         </tbody>
     </table>

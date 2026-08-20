@@ -1,12 +1,19 @@
 {% extends "base.html" %}
 {% block title %}Importar productos{% endblock %}
 {% block content %}
-<h2><i class="bi bi-file-earmark-arrow-up"></i> Importar productos</h2>
-<p class="text-muted">
-    Sube el archivo que exportaste de tu sistema anterior (Excel <code>.xlsx</code>/<code>.xls</code> o <code>.csv</code>).
-    En el siguiente paso vas a poder revisar cómo se interpretó cada columna y corregirlo antes de confirmar —
-    no hace falta que el archivo tenga un formato exacto.
-</p>
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-file-earmark-arrow-up"></i></div>
+        <div>
+            <h2>Importar productos</h2>
+            <p class="page-header-subtitle">
+                Sube el archivo que exportaste de tu sistema anterior (Excel <code>.xlsx</code>/<code>.xls</code> o <code>.csv</code>).
+                En el siguiente paso vas a poder revisar cómo se interpretó cada columna y corregirlo antes de confirmar —
+                no hace falta que el archivo tenga un formato exacto.
+            </p>
+        </div>
+    </div>
+</div>
 <div class="card p-4" style="max-width: 600px;">
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}

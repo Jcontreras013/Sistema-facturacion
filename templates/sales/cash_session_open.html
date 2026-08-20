@@ -1,7 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Abrir caja{% endblock %}
 {% block content %}
-<h2><i class="bi bi-safe"></i> Abrir caja</h2>
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-safe"></i></div>
+        <div>
+            <h2>Abrir caja</h2>
+            <p class="page-header-subtitle">Registra el monto inicial para comenzar a vender</p>
+        </div>
+    </div>
+</div>
 <div class="card p-4" style="max-width: 500px;">
     <form method="post">
         {% csrf_token %}

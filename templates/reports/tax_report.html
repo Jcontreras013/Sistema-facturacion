@@ -1,23 +1,34 @@
 {% extends "base.html" %}
 {% block title %}Reporte de impuestos{% endblock %}
 {% block content %}
-<h2><i class="bi bi-receipt-cutoff"></i> ISV cobrado (para declaración SAR)</h2>
-<form class="row g-2 mb-3">
-    <div class="col-md-3">
-        <label class="form-label small">Desde</label>
-        <input type="date" name="from" value="{{ date_from|date:'Y-m-d' }}" class="form-control">
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-receipt-cutoff"></i></div>
+        <div>
+            <h2>ISV cobrado</h2>
+            <p class="page-header-subtitle">Insumo para la declaración mensual ante el SAR</p>
+        </div>
     </div>
-    <div class="col-md-3">
-        <label class="form-label small">Hasta</label>
-        <input type="date" name="to" value="{{ date_to|date:'Y-m-d' }}" class="form-control">
-    </div>
-    <div class="col-md-2 d-flex align-items-end">
-        <button class="btn btn-outline-secondary w-100" type="submit">Filtrar</button>
-    </div>
-    <div class="col-md-2 d-flex align-items-end">
-        <a href="?from={{ date_from|date:'Y-m-d' }}&to={{ date_to|date:'Y-m-d' }}&export=xlsx" class="btn btn-outline-success w-100"><i class="bi bi-file-earmark-excel"></i> Descargar</a>
-    </div>
-</form>
+</div>
+
+<div class="card p-3 mb-3">
+    <form class="row g-2">
+        <div class="col-md-3">
+            <label class="form-label small">Desde</label>
+            <input type="date" name="from" value="{{ date_from|date:'Y-m-d' }}" class="form-control">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small">Hasta</label>
+            <input type="date" name="to" value="{{ date_to|date:'Y-m-d' }}" class="form-control">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-outline-secondary w-100" type="submit">Filtrar</button>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <a href="?from={{ date_from|date:'Y-m-d' }}&to={{ date_to|date:'Y-m-d' }}&export=xlsx" class="btn btn-outline-success w-100"><i class="bi bi-file-earmark-excel"></i> Descargar</a>
+        </div>
+    </form>
+</div>
 
 <div class="card p-3">
     <table class="table table-sm">
@@ -40,7 +51,12 @@
                 <td>L {{ row.tax_amount|floatformat:2 }}</td>
             </tr>
         {% empty %}
-            <tr><td colspan="5" class="text-muted">No hay ventas en el período seleccionado.</td></tr>
+            <tr><td colspan="5">
+                <div class="empty-state py-4">
+                    <i class="bi bi-receipt-cutoff"></i>
+                    <p>No hay ventas en el período seleccionado.</p>
+                </div>
+            </td></tr>
         {% endfor %}
         </tbody>
         <tfoot>

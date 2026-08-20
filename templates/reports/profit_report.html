@@ -1,40 +1,54 @@
 {% extends "base.html" %}
 {% block title %}Ganancias{% endblock %}
 {% block content %}
-<h2><i class="bi bi-graph-up-arrow"></i> Reporte de ganancias</h2>
-<form class="row g-2 mb-3">
-    <div class="col-md-3">
-        <label class="form-label small">Desde</label>
-        <input type="date" name="from" value="{{ date_from|date:'Y-m-d' }}" class="form-control">
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-graph-up-arrow"></i></div>
+        <div>
+            <h2>Reporte de ganancias</h2>
+            <p class="page-header-subtitle">Ingresos, costo y utilidad bruta del período</p>
+        </div>
     </div>
-    <div class="col-md-3">
-        <label class="form-label small">Hasta</label>
-        <input type="date" name="to" value="{{ date_to|date:'Y-m-d' }}" class="form-control">
-    </div>
-    <div class="col-md-2 d-flex align-items-end">
-        <button class="btn btn-outline-secondary w-100" type="submit">Filtrar</button>
-    </div>
-    <div class="col-md-2 d-flex align-items-end">
-        <a href="?from={{ date_from|date:'Y-m-d' }}&to={{ date_to|date:'Y-m-d' }}&export=xlsx" class="btn btn-outline-success w-100"><i class="bi bi-file-earmark-excel"></i> Descargar</a>
-    </div>
-</form>
+</div>
+
+<div class="card p-3 mb-3">
+    <form class="row g-2">
+        <div class="col-md-3">
+            <label class="form-label small">Desde</label>
+            <input type="date" name="from" value="{{ date_from|date:'Y-m-d' }}" class="form-control">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small">Hasta</label>
+            <input type="date" name="to" value="{{ date_to|date:'Y-m-d' }}" class="form-control">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-outline-secondary w-100" type="submit">Filtrar</button>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <a href="?from={{ date_from|date:'Y-m-d' }}&to={{ date_to|date:'Y-m-d' }}&export=xlsx" class="btn btn-outline-success w-100"><i class="bi bi-file-earmark-excel"></i> Descargar</a>
+        </div>
+    </form>
+</div>
 
 <div class="row g-3">
     <div class="col-md-4">
-        <div class="card stat-card p-3 bg-success text-white">
-            <div class="small">Ingresos totales</div>
+        <div class="card stat-card stat-teal p-3 text-white">
+            <i class="bi bi-cash-coin stat-icon"></i>
+            <div class="small opacity-75">Ingresos totales</div>
             <div class="fs-3 fw-bold">L {{ total_revenue|floatformat:2 }}</div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card stat-card p-3 bg-secondary text-white">
-            <div class="small">Costo de productos vendidos</div>
+        <div class="card stat-card stat-slate p-3 text-white">
+            <i class="bi bi-box-seam stat-icon"></i>
+            <div class="small opacity-75">Costo de productos vendidos</div>
             <div class="fs-3 fw-bold">L {{ total_cost|floatformat:2 }}</div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card stat-card p-3 bg-primary text-white">
-            <div class="small">Ganancia bruta</div>
+        <div class="card stat-card stat-brand p-3 text-white">
+            <i class="bi bi-graph-up-arrow stat-icon"></i>
+            <div class="small opacity-75">Ganancia bruta</div>
             <div class="fs-3 fw-bold">L {{ total_profit|floatformat:2 }}</div>
         </div>
     </div>

@@ -1,13 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Eliminar sesión de caja{% endblock %}
 {% block content %}
-<h2>Eliminar sesión de caja</h2>
-<div class="card p-4" style="max-width: 550px;">
+<div class="confirm-delete-wrap">
+<div class="card confirm-delete-card" style="max-width: 560px;">
+    <div class="confirm-delete-icon"><i class="bi bi-exclamation-triangle"></i></div>
+    <h2>Eliminar sesión de caja</h2>
     <p>¿Seguro que deseas eliminar la sesión de caja <strong>#{{ session.pk }}</strong> (abierta por {{ session.opened_by }})?</p>
-    <form method="post">
+    <form method="post" class="confirm-delete-actions">
         {% csrf_token %}
         <button type="submit" class="btn btn-danger">Sí, eliminar</button>
         <a href="{% url 'sales:cash_session_list' %}" class="btn btn-outline-secondary">Cancelar</a>
     </form>
+</div>
 </div>
 {% endblock %}

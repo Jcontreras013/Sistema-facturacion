@@ -1,9 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Usuarios{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="bi bi-people-fill"></i> Usuarios</h2>
-    <a href="{% url 'core:user_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nuevo usuario</a>
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-people-fill"></i></div>
+        <div>
+            <h2>Usuarios</h2>
+            <p class="page-header-subtitle">Cuentas del sistema y sus roles</p>
+        </div>
+    </div>
+    <div class="page-header-actions">
+        <a href="{% url 'core:user_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nuevo usuario</a>
+    </div>
 </div>
 <div class="card">
     <table class="table table-hover mb-0">
@@ -29,7 +37,12 @@
                 </td>
             </tr>
         {% empty %}
-            <tr><td colspan="5" class="text-muted text-center py-4">No hay usuarios registrados.</td></tr>
+            <tr><td colspan="5">
+                <div class="empty-state py-4">
+                    <i class="bi bi-people-fill"></i>
+                    <p>No hay usuarios registrados.</p>
+                </div>
+            </td></tr>
         {% endfor %}
         </tbody>
     </table>

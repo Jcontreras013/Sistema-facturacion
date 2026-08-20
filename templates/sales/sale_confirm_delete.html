@@ -1,18 +1,21 @@
 {% extends "base.html" %}
 {% block title %}Eliminar venta{% endblock %}
 {% block content %}
-<h2>Eliminar venta</h2>
-<div class="card p-4" style="max-width: 550px;">
+<div class="confirm-delete-wrap">
+<div class="card confirm-delete-card" style="max-width: 560px;">
+    <div class="confirm-delete-icon"><i class="bi bi-exclamation-triangle"></i></div>
+    <h2>Eliminar venta</h2>
     <p>¿Seguro que deseas eliminar permanentemente la venta <strong>{{ sale.number }}</strong>?</p>
     <div class="alert alert-warning">
         Esta acción borra la factura por completo, incluyendo su lugar en la numeración correlativa.
         Para operación normal se recomienda <strong>anular</strong> la venta en vez de eliminarla.
         {% if sale.status == "completada" %}El stock de los productos vendidos será restituido.{% endif %}
     </div>
-    <form method="post">
+    <form method="post" class="confirm-delete-actions">
         {% csrf_token %}
         <button type="submit" class="btn btn-danger">Sí, eliminar definitivamente</button>
         <a href="{% url 'sales:sale_detail' sale.pk %}" class="btn btn-outline-secondary">Cancelar</a>
     </form>
+</div>
 </div>
 {% endblock %}

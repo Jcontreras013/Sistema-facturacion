@@ -1,7 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Panel{% endblock %}
 {% block content %}
-<h2 class="mb-4"><i class="bi bi-speedometer2"></i> Panel principal</h2>
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-speedometer2"></i></div>
+        <div>
+            <h2>Panel principal</h2>
+            <p class="page-header-subtitle">Resumen del negocio hoy</p>
+        </div>
+    </div>
+</div>
 
 {% if open_session %}
     <div class="alert alert-success">Caja abierta desde {{ open_session.opened_at|date:"d/m/Y H:i" }} por {{ open_session.opened_by }}. <a href="{% url 'sales:cash_session_close' %}">Cerrar caja</a></div>
@@ -69,7 +77,12 @@
                         <td><a href="{% url 'sales:sale_detail' sale.pk %}" class="btn btn-sm btn-outline-secondary">Ver</a></td>
                     </tr>
                 {% empty %}
-                    <tr><td colspan="4" class="text-muted">Aún no hay ventas registradas.</td></tr>
+                    <tr><td colspan="4">
+                        <div class="empty-state py-3">
+                            <i class="bi bi-receipt-cutoff"></i>
+                            <p>Aún no hay ventas registradas.</p>
+                        </div>
+                    </td></tr>
                 {% endfor %}
                 </tbody>
             </table>
@@ -88,7 +101,12 @@
                         <td>{{ product.min_stock }}</td>
                     </tr>
                 {% empty %}
-                    <tr><td colspan="3" class="text-muted">Todo el inventario está en niveles saludables.</td></tr>
+                    <tr><td colspan="3">
+                        <div class="empty-state py-3">
+                            <i class="bi bi-check2-circle"></i>
+                            <p>Todo el inventario está en niveles saludables.</p>
+                        </div>
+                    </td></tr>
                 {% endfor %}
                 </tbody>
             </table>

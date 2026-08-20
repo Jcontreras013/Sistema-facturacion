@@ -1,8 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Bitácora de auditoría{% endblock %}
 {% block content %}
-<h2><i class="bi bi-journal-text"></i> Bitácora de auditoría</h2>
-<p class="text-muted">Últimos 300 registros. Quién hizo qué cambio y cuándo.</p>
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-journal-text"></i></div>
+        <div>
+            <h2>Bitácora de auditoría</h2>
+            <p class="page-header-subtitle">Últimos 300 registros. Quién hizo qué cambio y cuándo.</p>
+        </div>
+    </div>
+</div>
 
 <form class="row g-2 mb-3">
     <div class="col-md-3">
@@ -41,7 +48,12 @@
                 <td>{{ log.extra|default:"—" }}</td>
             </tr>
         {% empty %}
-            <tr><td colspan="6" class="text-muted text-center py-4">No hay registros en la bitácora todavía.</td></tr>
+            <tr><td colspan="6">
+                <div class="empty-state py-4">
+                    <i class="bi bi-journal-text"></i>
+                    <p>No hay registros en la bitácora todavía.</p>
+                </div>
+            </td></tr>
         {% endfor %}
         </tbody>
     </table>

@@ -1,8 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Registrar abono — {{ client.name }}{% endblock %}
 {% block content %}
-<h2><i class="bi bi-cash"></i> Registrar abono</h2>
-<p class="text-muted">Cliente: <strong>{{ client.name }}</strong> — Saldo pendiente actual: <strong>L {{ balance|floatformat:2 }}</strong></p>
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-cash"></i></div>
+        <div>
+            <h2>Registrar abono</h2>
+            <p class="page-header-subtitle">Cliente: <strong>{{ client.name }}</strong> — Saldo pendiente actual: <strong>L {{ balance|floatformat:2 }}</strong></p>
+        </div>
+    </div>
+</div>
 <div class="card p-4" style="max-width: 500px;">
     <form method="post">
         {% csrf_token %}

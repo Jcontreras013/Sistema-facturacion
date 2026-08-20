@@ -1,23 +1,34 @@
 {% extends "base.html" %}
 {% block title %}Flujo de caja{% endblock %}
 {% block content %}
-<h2><i class="bi bi-cash-stack"></i> Flujo de caja</h2>
-<form class="row g-2 mb-3">
-    <div class="col-md-3">
-        <label class="form-label small">Desde</label>
-        <input type="date" name="from" value="{{ date_from|date:'Y-m-d' }}" class="form-control">
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-cash-stack"></i></div>
+        <div>
+            <h2>Flujo de caja</h2>
+            <p class="page-header-subtitle">Historial de aperturas, cierres y diferencias</p>
+        </div>
     </div>
-    <div class="col-md-3">
-        <label class="form-label small">Hasta</label>
-        <input type="date" name="to" value="{{ date_to|date:'Y-m-d' }}" class="form-control">
-    </div>
-    <div class="col-md-2 d-flex align-items-end">
-        <button class="btn btn-outline-secondary w-100" type="submit">Filtrar</button>
-    </div>
-    <div class="col-md-2 d-flex align-items-end">
-        <a href="?from={{ date_from|date:'Y-m-d' }}&to={{ date_to|date:'Y-m-d' }}&export=xlsx" class="btn btn-outline-success w-100"><i class="bi bi-file-earmark-excel"></i> Descargar</a>
-    </div>
-</form>
+</div>
+
+<div class="card p-3 mb-3">
+    <form class="row g-2">
+        <div class="col-md-3">
+            <label class="form-label small">Desde</label>
+            <input type="date" name="from" value="{{ date_from|date:'Y-m-d' }}" class="form-control">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small">Hasta</label>
+            <input type="date" name="to" value="{{ date_to|date:'Y-m-d' }}" class="form-control">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-outline-secondary w-100" type="submit">Filtrar</button>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <a href="?from={{ date_from|date:'Y-m-d' }}&to={{ date_to|date:'Y-m-d' }}&export=xlsx" class="btn btn-outline-success w-100"><i class="bi bi-file-earmark-excel"></i> Descargar</a>
+        </div>
+    </form>
+</div>
 
 <div class="card p-3">
     <table class="table table-sm">
@@ -37,7 +48,12 @@
                 <td>{% if session.difference is not None %}L {{ session.difference|floatformat:2 }}{% else %}—{% endif %}</td>
             </tr>
         {% empty %}
-            <tr><td colspan="8" class="text-muted text-center py-4">No hay sesiones de caja en el período seleccionado.</td></tr>
+            <tr><td colspan="8">
+                <div class="empty-state py-4">
+                    <i class="bi bi-cash-stack"></i>
+                    <p>No hay sesiones de caja en el período seleccionado.</p>
+                </div>
+            </td></tr>
         {% endfor %}
         </tbody>
     </table>

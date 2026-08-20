@@ -1,7 +1,15 @@
 {% extends "base.html" %}
 {% block title %}{{ product.name }}{% endblock %}
 {% block content %}
-<h2>{{ product.name }} <small class="text-muted">({{ product.code }})</small></h2>
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-box-seam"></i></div>
+        <div>
+            <h2>{{ product.name }}</h2>
+            <p class="page-header-subtitle">Código {{ product.code }}</p>
+        </div>
+    </div>
+</div>
 
 <div class="row g-4">
     <div class="col-md-5">
