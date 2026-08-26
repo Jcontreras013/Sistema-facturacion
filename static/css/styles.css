@@ -388,6 +388,80 @@ a:hover {
     margin-top: 1.4rem;
 }
 
+/* ---------- POS function-key bar ---------- */
+
+.pos-fkey-spacer {
+    height: 76px;
+}
+
+.pos-fkey-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1040;
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.5rem 0.6rem;
+    background: linear-gradient(100deg, var(--brand-darker) 0%, var(--brand) 65%, #1c8f5c 100%);
+    box-shadow: 0 -6px 20px rgba(10, 30, 20, 0.25);
+    overflow-x: auto;
+}
+
+.pos-fkey-btn {
+    flex: 1 1 0;
+    min-width: 92px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    padding: 0.45rem 0.3rem;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.pos-fkey-btn:hover,
+.pos-fkey-btn:focus-visible {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+.pos-fkey-btn:active {
+    transform: translateY(1px);
+}
+
+.pos-fkey-btn .pos-fkey-tag {
+    font-weight: 800;
+    font-size: 0.72rem;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+}
+
+.pos-fkey-btn .pos-fkey-label {
+    font-size: 0.74rem;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.1;
+}
+
+.pos-fkey-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+@media (max-width: 767px) {
+    .pos-fkey-btn .pos-fkey-label {
+        display: none;
+    }
+    .pos-fkey-btn {
+        min-width: 44px;
+    }
+}
+
 /* ---------- Misc ---------- */
 
 .badge {

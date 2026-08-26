@@ -78,6 +78,49 @@
         </form>
     </div>
 </div>
+
+<div class="pos-fkey-spacer"></div>
+<div class="pos-fkey-bar">
+    <button type="button" class="pos-fkey-btn" data-fkey="F1" title="F1 — Ayuda"><span class="pos-fkey-tag">F1</span><span class="pos-fkey-label">Ayuda</span></button>
+    <button type="button" class="pos-fkey-btn" data-fkey="F2" title="F2 — Buscar producto"><span class="pos-fkey-tag">F2</span><span class="pos-fkey-label">Producto</span></button>
+    <button type="button" class="pos-fkey-btn" data-fkey="F3" title="F3 — Buscar cliente"><span class="pos-fkey-tag">F3</span><span class="pos-fkey-label">Cliente</span></button>
+    <button type="button" class="pos-fkey-btn" data-fkey="F4" title="F4 — Forma de pago"><span class="pos-fkey-tag">F4</span><span class="pos-fkey-label">Pago</span></button>
+    <button type="button" class="pos-fkey-btn" data-fkey="F5" title="F5 — Efectivo recibido"><span class="pos-fkey-tag">F5</span><span class="pos-fkey-label">Efectivo</span></button>
+    <button type="button" class="pos-fkey-btn" data-fkey="F6" title="F6 — Notas"><span class="pos-fkey-tag">F6</span><span class="pos-fkey-label">Notas</span></button>
+    <button type="button" class="pos-fkey-btn" data-fkey="F7" title="F7 — Nueva venta"><span class="pos-fkey-tag">F7</span><span class="pos-fkey-label">Nueva venta</span></button>
+    <button type="button" class="pos-fkey-btn" data-fkey="F8" title="F8 — Quitar producto"><span class="pos-fkey-tag">F8</span><span class="pos-fkey-label">Quitar</span></button>
+    <button type="button" class="pos-fkey-btn" data-fkey="F9" title="F9 — Historial de ventas"><span class="pos-fkey-tag">F9</span><span class="pos-fkey-label">Historial</span></button>
+    <button type="button" class="pos-fkey-btn" data-fkey="F12" title="F12 — Cobrar venta"><span class="pos-fkey-tag">F12</span><span class="pos-fkey-label">Cobrar</span></button>
+</div>
+
+<div class="modal fade" id="posHelpModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-keyboard"></i> Atajos de teclado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr><td class="fw-bold" style="width:70px;">F1</td><td>Mostrar esta ayuda</td></tr>
+                        <tr><td class="fw-bold">F2</td><td>Ir a la búsqueda de productos / código de barras</td></tr>
+                        <tr><td class="fw-bold">F3</td><td>Ir a la búsqueda de clientes</td></tr>
+                        <tr><td class="fw-bold">F4</td><td>Ir a la forma de pago</td></tr>
+                        <tr><td class="fw-bold">F5</td><td>Ir al monto en efectivo recibido</td></tr>
+                        <tr><td class="fw-bold">F6</td><td>Ir a las notas de la venta</td></tr>
+                        <tr><td class="fw-bold">F7</td><td>Cancelar y empezar una nueva venta</td></tr>
+                        <tr><td class="fw-bold">F8</td><td>Quitar el producto seleccionado del carrito</td></tr>
+                        <tr><td class="fw-bold">F9</td><td>Ver historial de ventas</td></tr>
+                        <tr><td class="fw-bold">F12</td><td>Cobrar la venta</td></tr>
+                        <tr><td class="fw-bold">↑ ↓</td><td>Moverte entre resultados de búsqueda o productos del carrito</td></tr>
+                        <tr><td class="fw-bold">Enter</td><td>Agregar el producto resaltado o confirmar</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -574,5 +617,74 @@ document.getElementById('saleForm').addEventListener('submit', async (e) => {
 renderCartTable();
 updateSummary();
 toggleCashCalculator();
+
+// ---- Barra de teclas de función (estilo caja registradora) ----
+const posHelpModal = new bootstrap.Modal(document.getElementById('posHelpModal'));
+
+function runFKeyAction(key) {
+    switch (key) {
+        case 'F1':
+            posHelpModal.show();
+            break;
+        case 'F2':
+            searchBox.focus();
+            searchBox.select();
+            break;
+        case 'F3':
+            clientSearch.focus();
+            clientSearch.select();
+            break;
+        case 'F4':
+            paymentMethodSelect.focus();
+            if (typeof paymentMethodSelect.showPicker === 'function') {
+                try { paymentMethodSelect.showPicker(); } catch (e) { /* not supported in this browser */ }
+            }
+            break;
+        case 'F5':
+            if (paymentMethodSelect.value === 'efectivo') {
+                cashReceived.focus();
+                cashReceived.select();
+            } else {
+                showPosMessage('El cálculo de cambio solo aplica cuando la forma de pago es Efectivo.', 'warning');
+            }
+            break;
+        case 'F6':
+            notesInput.focus();
+            break;
+        case 'F7':
+            if (cart.length === 0 || confirm('¿Cancelar esta venta y empezar una nueva?')) {
+                resetSaleForm();
+                searchBox.focus();
+            }
+            break;
+        case 'F8':
+            if (cartActiveIndex >= 0 && cart[cartActiveIndex]) {
+                removeFromCart(cart[cartActiveIndex].id);
+                searchBox.focus();
+            } else {
+                showPosMessage('Selecciona un producto del carrito (flechas ↑ ↓) antes de quitarlo.', 'warning');
+            }
+            break;
+        case 'F9':
+            window.open('{% url "sales:sale_list" %}', '_blank');
+            break;
+        case 'F12':
+            if (!checkoutBtn.disabled) {
+                checkoutBtn.click();
+            }
+            break;
+    }
+}
+
+document.querySelectorAll('.pos-fkey-btn').forEach(btn => {
+    btn.addEventListener('click', () => runFKeyAction(btn.dataset.fkey));
+});
+
+const HANDLED_FKEYS = new Set(['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F12']);
+document.addEventListener('keydown', (e) => {
+    if (!HANDLED_FKEYS.has(e.key)) return;
+    e.preventDefault();
+    runFKeyAction(e.key);
+});
 </script>
 {% endblock %}
