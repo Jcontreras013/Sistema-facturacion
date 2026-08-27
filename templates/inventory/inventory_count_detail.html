@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Conteo #{{ count.pk }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-clipboard-check"></i></div>
+        <div>
+            <h2>Conteo #{{ count.pk }}</h2>
+            <p class="page-header-subtitle">
+                {% if count.status == "abierto" %}<span class="badge bg-warning text-dark">Abierto</span>{% else %}<span class="badge bg-success">Cerrado</span>{% endif %}
+                {% if count.notes %} — {{ count.notes }}{% endif %}
+            </p>
+        </div>
+    </div>
+    <div class="page-header-actions">
+        {% if count.status == "abierto" %}
+        <form method="post" action="{% url 'inventory:inventory_count_close' count.pk %}" class="d-inline" onsubmit="return confirm('¿Cerrar el conteo y ajustar el inventario según lo contado? Esta acción no se puede deshacer.');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success"><i class="bi bi-check-circle"></i> Cerrar y ajustar inventario</button>
+        </form>
+        <a href="{% url 'inventory:inventory_count_delete' count.pk %}" class="btn btn-outline-danger"><i class="bi bi-trash"></i> Eliminar</a>
+        {% endif %}
+        <a href="{% url 'inventory:inventory_count_list' %}" class="btn btn-outline-secondary">Volver</a>
+    </div>
+</div>
+
+{% if count.status == "abierto" %}
+<p class="text-muted small">Ingresa la cantidad real que encontraste en bodega para cada producto. Puedes guardar y seguir editando; los ajustes de inventario solo se aplican cuando cierras el conteo.</p>
+<form method="post" action="{% url 'inventory:inventory_count_save' count.pk %}">
+    {% csrf_token %}
+{% endif %}
+<div class="card p-3">
+    <table class="table table-sm mb-0">
+        <thead><tr><th>Producto</th><th class="text-end">Sistema</th><th class="text-end">Contado</th><th class="text-end">Diferencia</th></tr></thead>
+        <tbody>
+        {% for item in items %}
+            <tr class="{% if item.difference and item.difference != 0 %}table-low-stock{% endif %}">
+                <td>{{ item.product.name }}</td>
+                <td class="text-end">{{ item.system_stock }}</td>
+                <td class="text-end">
+                    {% if count.status == "abierto" %}
+                        <input type="number" name="counted_{{ item.pk }}" value="{{ item.counted_stock|default_if_none:'' }}" step="0.01" min="0" class="form-control form-control-sm ms-auto" style="width:100px">
+                    {% else %}
+                        {{ item.counted_stock|default:"—" }}
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    {% if item.difference is not None %}
+                        {% if item.difference > 0 %}<span class="text-success">+{{ item.difference }}</span>
+                        {% elif item.difference < 0 %}<span class="text-danger">{{ item.difference }}</span>
+                        {% else %}0{% endif %}
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="4">
+                <div class="empty-state py-4">
+                    <i class="bi bi-box-seam"></i>
+                    <p>No hay productos en este conteo.</p>
+                </div>
+            </td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% if count.status == "abierto" %}
+    <button type="submit" class="btn btn-primary mt-3"><i class="bi bi-save"></i> Guardar conteo</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -293,3 +293,52 @@ class PurchaseOrderItem(models.Model):
     @property
     def pending_quantity(self):
         return self.quantity_ordered - self.quantity_received
+
+
+class InventoryCount(models.Model):
+    STATUS_CHOICES = [
+        ("abierto", "Abierto"),
+        ("cerrado", "Cerrado"),
+    ]
+
+    status = models.CharField("Estado", max_length=10, choices=STATUS_CHOICES, default="abierto")
+    notes = models.CharField("Notas", max_length=255, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Creado por", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="inventory_counts",
+    )
+    created_at = models.DateTimeField("Creado", auto_now_add=True)
+    closed_at = models.DateTimeField("Cerrado", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Conteo físico de inventario"
+        verbose_name_plural = "Conteos físicos de inventario"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Conteo #{self.pk}"
+
+    @property
+    def items_with_difference(self):
+        return [item for item in self.items.all() if item.difference not in (None, Decimal("0"))]
+
+
+class InventoryCountItem(models.Model):
+    inventory_count = models.ForeignKey(InventoryCount, on_delete=models.CASCADE, related_name="items")
+    product = models.ForeignKey(Product, verbose_name="Producto", on_delete=models.PROTECT, related_name="count_items")
+    system_stock = models.DecimalField("Stock en sistema", max_digits=10, decimal_places=2)
+    counted_stock = models.DecimalField("Stock contado", max_digits=10, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Detalle de conteo"
+        verbose_name_plural = "Detalles de conteo"
+        ordering = ["product__name"]
+
+    def __str__(self):
+        return f"{self.product.name}: sistema {self.system_stock}, contado {self.counted_stock}"
+
+    @property
+    def difference(self):
+        if self.counted_stock is None:
+            return None
+        return self.counted_stock - self.system_stock

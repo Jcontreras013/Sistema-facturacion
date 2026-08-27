@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Eliminar conteo{% endblock %}
+{% block content %}
+<div class="confirm-delete-wrap">
+<div class="card confirm-delete-card">
+    <div class="confirm-delete-icon"><i class="bi bi-exclamation-triangle"></i></div>
+    <h2>Eliminar conteo</h2>
+    <p>¿Seguro que deseas eliminar el conteo <strong>#{{ count.pk }}</strong>?</p>
+    <form method="post" class="confirm-delete-actions">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+        <a href="{% url 'inventory:inventory_count_detail' count.pk %}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>
+</div>
+{% endblock %}

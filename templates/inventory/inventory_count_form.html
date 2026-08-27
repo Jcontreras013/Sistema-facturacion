@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Nuevo conteo{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-clipboard-check"></i></div>
+        <div>
+            <h2>Nuevo conteo físico</h2>
+            <p class="page-header-subtitle">Se tomará una foto del stock actual de todos los productos activos para comparar contra el conteo real</p>
+        </div>
+    </div>
+</div>
+<div class="card p-4" style="max-width: 600px;">
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">Notas (opcional)</label>
+            <input type="text" name="notes" class="form-control" placeholder="Ej. Conteo de fin de mes">
+        </div>
+        <button type="submit" class="btn btn-primary">Iniciar conteo</button>
+        <a href="{% url 'inventory:inventory_count_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

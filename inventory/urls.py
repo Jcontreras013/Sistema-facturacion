@@ -35,4 +35,10 @@ urlpatterns = [
     path("ordenes-compra/<int:pk>/recibir/", views.purchase_order_receive, name="purchase_order_receive"),
     path("ordenes-compra/<int:pk>/cancelar/", views.purchase_order_cancel, name="purchase_order_cancel"),
     path("ordenes-compra/<int:pk>/eliminar/", views.purchase_order_delete, name="purchase_order_delete"),
+    path("conteos/", views.inventory_count_list, name="inventory_count_list"),
+    path("conteos/nuevo/", views.inventory_count_create, name="inventory_count_create"),
+    path("conteos/<int:pk>/", views.inventory_count_detail, name="inventory_count_detail"),
+    path("conteos/<int:pk>/guardar/", views.inventory_count_save, name="inventory_count_save"),
+    path("conteos/<int:pk>/cerrar/", views.inventory_count_close, name="inventory_count_close"),
+    path("conteos/<int:pk>/eliminar/", views.inventory_count_delete, name="inventory_count_delete"),
 ]

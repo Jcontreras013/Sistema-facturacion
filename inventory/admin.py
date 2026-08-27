@@ -1,6 +1,16 @@
 from django.contrib import admin
 
-from .models import Category, Product, Promotion, PurchaseOrder, PurchaseOrderItem, Provider, StockMovement
+from .models import (
+    Category,
+    InventoryCount,
+    InventoryCountItem,
+    Product,
+    Promotion,
+    Provider,
+    PurchaseOrder,
+    PurchaseOrderItem,
+    StockMovement,
+)
 
 
 @admin.register(Category)
@@ -44,6 +54,18 @@ class PurchaseOrderAdmin(admin.ModelAdmin):
     list_filter = ("status",)
     search_fields = ("number",)
     inlines = [PurchaseOrderItemInline]
+
+
+class InventoryCountItemInline(admin.TabularInline):
+    model = InventoryCountItem
+    extra = 0
+
+
+@admin.register(InventoryCount)
+class InventoryCountAdmin(admin.ModelAdmin):
+    list_display = ("id", "status", "created_by", "created_at", "closed_at")
+    list_filter = ("status",)
+    inlines = [InventoryCountItemInline]
 
 
 @admin.register(StockMovement)

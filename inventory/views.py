@@ -25,7 +25,17 @@ from .importers import (
     parse_tax_rate,
     parse_uploaded_file,
 )
-from .models import Category, Product, Promotion, PurchaseOrder, PurchaseOrderItem, Provider, StockMovement
+from .models import (
+    Category,
+    InventoryCount,
+    InventoryCountItem,
+    Product,
+    Promotion,
+    Provider,
+    PurchaseOrder,
+    PurchaseOrderItem,
+    StockMovement,
+)
 
 IMPORT_SESSION_PATH = "product_import_path"
 IMPORT_SESSION_NAME = "product_import_name"
@@ -380,6 +390,90 @@ def purchase_order_delete(request, pk):
         messages.success(request, f"Orden {number} eliminada.")
         return redirect("inventory:purchase_order_list")
     return render(request, "inventory/purchase_order_confirm_delete.html", {"order": order})
+
+
+@admin_required
+def inventory_count_list(request):
+    counts = InventoryCount.objects.select_related("created_by").all()
+    return render(request, "inventory/inventory_count_list.html", {"counts": counts})
+
+
+@admin_required
+def inventory_count_create(request):
+    if request.method == "POST":
+        count = InventoryCount.objects.create(created_by=request.user, notes=request.POST.get("notes", ""))
+        products = Product.objects.filter(is_active=True)
+        InventoryCountItem.objects.bulk_create(
+            [InventoryCountItem(inventory_count=count, product=p, system_stock=p.stock) for p in products]
+        )
+        log_action(request.user, "created", count, extra=f"{products.count()} productos")
+        messages.success(request, "Conteo iniciado. Ingresa las cantidades reales que encuentres en bodega.")
+        return redirect("inventory:inventory_count_detail", pk=count.pk)
+    return render(request, "inventory/inventory_count_form.html")
+
+
+@admin_required
+def inventory_count_detail(request, pk):
+    count = get_object_or_404(InventoryCount, pk=pk)
+    items = count.items.select_related("product").all()
+    return render(request, "inventory/inventory_count_detail.html", {"count": count, "items": items})
+
+
+@admin_required
+def inventory_count_save(request, pk):
+    count = get_object_or_404(InventoryCount, pk=pk)
+    if request.method == "POST" and count.status == "abierto":
+        for item in count.items.all():
+            raw = request.POST.get(f"counted_{item.pk}", "").strip()
+            if raw == "":
+                continue
+            try:
+                item.counted_stock = Decimal(raw)
+            except Exception:
+                continue
+            item.save(update_fields=["counted_stock"])
+        messages.success(request, "Conteo guardado. Puedes seguir editándolo o cerrarlo cuando termines.")
+    return redirect("inventory:inventory_count_detail", pk=count.pk)
+
+
+@admin_required
+def inventory_count_close(request, pk):
+    count = get_object_or_404(InventoryCount, pk=pk)
+    if request.method == "POST" and count.status == "abierto":
+        import django.utils.timezone as timezone
+
+        with transaction.atomic():
+            for item in count.items.select_related("product").all():
+                if item.counted_stock is None or item.counted_stock == item.system_stock:
+                    continue
+                StockMovement.objects.create(
+                    product=item.product,
+                    movement_type="adjust",
+                    reason_category="otro",
+                    quantity=item.counted_stock,
+                    reason=f"Ajuste por conteo físico #{count.pk}",
+                    user=request.user,
+                )
+            count.status = "cerrado"
+            count.closed_at = timezone.now()
+            count.save(update_fields=["status", "closed_at"])
+        log_action(request.user, "updated", count, extra="Conteo cerrado y ajustes aplicados")
+        messages.success(request, "Conteo cerrado. Los ajustes de inventario ya se aplicaron.")
+    return redirect("inventory:inventory_count_detail", pk=count.pk)
+
+
+@admin_required
+def inventory_count_delete(request, pk):
+    count = get_object_or_404(InventoryCount, pk=pk)
+    if count.status != "abierto":
+        messages.error(request, "Solo puedes eliminar conteos que sigan abiertos (los cerrados ya afectaron el inventario).")
+        return redirect("inventory:inventory_count_detail", pk=count.pk)
+    if request.method == "POST":
+        log_action(request.user, "deleted", count)
+        count.delete()
+        messages.success(request, "Conteo eliminado.")
+        return redirect("inventory:inventory_count_list")
+    return render(request, "inventory/inventory_count_confirm_delete.html", {"count": count})
 
 
 @admin_required
