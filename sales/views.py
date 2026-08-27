@@ -2,7 +2,9 @@ import json
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
+from django.contrib.auth import authenticate
 from django.contrib.auth.decorators import login_required
+from django.core.signing import BadSignature, SignatureExpired, dumps, loads
 from django.db import transaction
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -12,10 +14,29 @@ from django.utils.dateparse import parse_date
 from clients.models import Client
 from core.audit import log_action
 from core.models import Company
-from core.permissions import admin_required
+from core.permissions import admin_required, is_admin
 from inventory.models import Product, StockMovement
 
 from .models import CashSession, CreditNote, CreditNoteItem, HeldSale, Sale, SaleItem
+
+DISCOUNT_TOKEN_SALT = "pos-discount-authorization"
+DISCOUNT_TOKEN_MAX_AGE = 300  # 5 minutos: el token de autorización expira rápido por seguridad.
+
+
+def _make_discount_token(user_id, percent):
+    return dumps({"user_id": user_id, "percent": str(percent)}, salt=DISCOUNT_TOKEN_SALT)
+
+
+def _verify_discount_token(token, expected_percent):
+    if not token:
+        return None
+    try:
+        data = loads(token, salt=DISCOUNT_TOKEN_SALT, max_age=DISCOUNT_TOKEN_MAX_AGE)
+    except (BadSignature, SignatureExpired):
+        return None
+    if str(data.get("percent")) != str(expected_percent):
+        return None
+    return data.get("user_id")
 
 
 def _get_open_session():
@@ -25,9 +46,26 @@ def _get_open_session():
 def _create_sale(
     user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes,
     mixed_cash_amount=None, mixed_other_amount=None,
+    discount_percent=None, discount_token=None,
 ):
     """Crea una venta a partir de un carrito ya validado. Lanza ValueError/InvalidOperation/KeyError/Http404 en caso de error."""
     with transaction.atomic():
+        validated_discount_percent = Decimal("0")
+        discount_authorized_by_id = None
+        if discount_percent:
+            try:
+                validated_discount_percent = Decimal(str(discount_percent))
+            except InvalidOperation:
+                raise ValueError("Porcentaje de descuento inválido.")
+            if validated_discount_percent < 0 or validated_discount_percent > 100:
+                raise ValueError("El descuento debe estar entre 0% y 100%.")
+            if validated_discount_percent > 0:
+                discount_authorized_by_id = _verify_discount_token(discount_token, validated_discount_percent)
+                if discount_authorized_by_id is None:
+                    raise ValueError(
+                        "El descuento no está autorizado o el código expiró. Pide autorización a un administrador de nuevo."
+                    )
+
         if client_id == "__new__":
             if new_client_name:
                 new_client = Client.objects.create(name=new_client_name, document=client_rtn)
@@ -56,6 +94,8 @@ def _create_sale(
             payment_method=payment_method,
             notes=notes,
             cash_session=open_session,
+            discount_percent=validated_discount_percent,
+            discount_authorized_by_id=discount_authorized_by_id,
         )
         for entry in cart:
             product = get_object_or_404(Product, pk=entry["id"])
@@ -125,6 +165,8 @@ def pos(request):
         notes = request.POST.get("notes", "")
         mixed_cash_amount = request.POST.get("mixed_cash_amount") or None
         mixed_other_amount = request.POST.get("mixed_other_amount") or None
+        discount_percent = request.POST.get("discount_percent") or None
+        discount_token = request.POST.get("discount_token") or None
 
         try:
             cart = json.loads(cart_raw)
@@ -140,6 +182,7 @@ def pos(request):
                 request.user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes,
                 mixed_cash_amount=Decimal(mixed_cash_amount) if mixed_cash_amount else None,
                 mixed_other_amount=Decimal(mixed_other_amount) if mixed_other_amount else None,
+                discount_percent=discount_percent, discount_token=discount_token,
             )
         except (ValueError, InvalidOperation, KeyError) as exc:
             messages.error(request, str(exc) or "No se pudo completar la venta.")
@@ -214,6 +257,8 @@ def pos_checkout_api(request):
     notes = payload.get("notes") or ""
     mixed_cash_amount = payload.get("mixed_cash_amount")
     mixed_other_amount = payload.get("mixed_other_amount")
+    discount_percent = payload.get("discount_percent")
+    discount_token = payload.get("discount_token")
 
     if not cart:
         return JsonResponse({"ok": False, "error": "Agrega al menos un producto a la venta."}, status=400)
@@ -223,12 +268,46 @@ def pos_checkout_api(request):
             request.user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes,
             mixed_cash_amount=Decimal(str(mixed_cash_amount)) if mixed_cash_amount not in (None, "") else None,
             mixed_other_amount=Decimal(str(mixed_other_amount)) if mixed_other_amount not in (None, "") else None,
+            discount_percent=discount_percent, discount_token=discount_token,
         )
     except (ValueError, InvalidOperation, KeyError, Http404) as exc:
         return JsonResponse({"ok": False, "error": str(exc) or "No se pudo completar la venta."}, status=400)
 
     request.session["last_sale_id"] = sale.pk
     return JsonResponse({"ok": True, "sale_number": sale.number, "redirect_url": _sale_redirect_url(sale)})
+
+
+@login_required
+def pos_authorize_discount_api(request):
+    """Verifica usuario/contraseña de un administrador y entrega un token firmado y de corta duración
+    que autoriza aplicar el porcentaje de descuento indicado en la venta que se está por cobrar."""
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "error": "Método no permitido."}, status=405)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "Datos inválidos."}, status=400)
+
+    username = (payload.get("username") or "").strip()
+    password = payload.get("password") or ""
+    percent_raw = payload.get("percent")
+
+    try:
+        percent = Decimal(str(percent_raw))
+    except (InvalidOperation, TypeError):
+        return JsonResponse({"ok": False, "error": "Porcentaje de descuento inválido."}, status=400)
+    if percent <= 0 or percent > 100:
+        return JsonResponse({"ok": False, "error": "El descuento debe ser mayor a 0% y hasta 100%."}, status=400)
+
+    supervisor = authenticate(request, username=username, password=password)
+    if supervisor is None:
+        return JsonResponse({"ok": False, "error": "Usuario o contraseña de administrador incorrectos."}, status=403)
+    if not is_admin(supervisor):
+        return JsonResponse({"ok": False, "error": "Ese usuario no tiene permisos de administrador."}, status=403)
+
+    token = _make_discount_token(supervisor.id, percent)
+    return JsonResponse({"ok": True, "token": token, "authorized_by": supervisor.username})
 
 
 @login_required

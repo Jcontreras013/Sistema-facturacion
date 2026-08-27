@@ -96,6 +96,11 @@ class Sale(models.Model):
     mixed_other_amount = models.DecimalField(
         "Monto en otro método (pago mixto)", max_digits=12, decimal_places=2, null=True, blank=True
     )
+    discount_percent = models.DecimalField("Descuento (%)", max_digits=5, decimal_places=2, default=0)
+    discount_authorized_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Descuento autorizado por", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="authorized_discounts",
+    )
     created_at = models.DateTimeField("Fecha", auto_now_add=True)
 
     class Meta:
@@ -119,10 +124,16 @@ class Sale(models.Model):
         items = list(self.items.all())
         subtotal = sum((item.subtotal for item in items), Decimal("0"))
         tax = sum((item.tax_amount for item in items), Decimal("0")).quantize(Decimal("0.01"))
+        gross_total = subtotal + tax
+        discount = (gross_total * self.discount_percent / Decimal("100")).quantize(Decimal("0.01"))
         self.subtotal = subtotal
         self.tax = tax
-        self.total = subtotal + tax
+        self.total = gross_total - discount
         self.save(update_fields=["subtotal", "tax", "total"])
+
+    @property
+    def discount_amount(self):
+        return (self.subtotal + self.tax) - self.total
 
 
 class SaleItem(models.Model):

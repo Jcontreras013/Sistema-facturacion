@@ -12,6 +12,40 @@
     <button type="button" id="heldSalesBtn" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#heldSalesModal">
         <i class="bi bi-hourglass-split"></i> Ventas en espera <span class="badge bg-secondary" id="heldSalesBadge">0</span>
     </button>
+    <button type="button" id="discountBtn" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#discountModal">
+        <i class="bi bi-percent"></i> Descuento
+    </button>
+</div>
+
+<div class="modal fade" id="discountModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-percent"></i> Aplicar descuento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="discountAppliedInfo" class="alert alert-success" style="display:none;"></div>
+                <div class="mb-3">
+                    <label class="form-label">Porcentaje de descuento sobre el total</label>
+                    <input type="number" id="discountPercentInput" class="form-control" min="0.01" max="100" step="0.01" placeholder="Ej. 10">
+                </div>
+                <hr>
+                <p class="text-muted small">Este descuento requiere usuario y contraseña de un administrador para autorizarse.</p>
+                <div class="mb-2">
+                    <label class="form-label small">Usuario administrador</label>
+                    <input type="text" id="discountSupervisorUser" class="form-control" autocomplete="off">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small">Contraseña</label>
+                    <input type="password" id="discountSupervisorPass" class="form-control" autocomplete="off">
+                </div>
+                <div id="discountError" class="text-danger small mb-2" style="display:none;"></div>
+                <button type="button" id="discountAuthorizeBtn" class="btn btn-primary"><i class="bi bi-shield-check"></i> Autorizar descuento</button>
+                <button type="button" id="discountRemoveBtn" class="btn btn-outline-danger" style="display:none;">Quitar descuento</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="heldSalesModal" tabindex="-1" aria-hidden="true">
@@ -84,6 +118,9 @@
             <div class="card p-3">
                 <div class="d-flex justify-content-between"><span>Subtotal</span><strong id="cartSubtotal">L 0.00</strong></div>
                 <div class="d-flex justify-content-between"><span>Impuesto (ISV)</span><strong id="cartTax">L 0.00</strong></div>
+                <div class="d-flex justify-content-between text-danger" id="cartDiscountRow" style="display:none;">
+                    <span>Descuento (<span id="cartDiscountPercent">0</span>%)</span><strong id="cartDiscountAmount">-L 0.00</strong>
+                </div>
                 <div class="d-flex justify-content-between fs-5"><span>Total</span><strong id="cartTotal">L 0.00</strong></div>
                 <div id="cashCalculator" class="border-top pt-2 mt-2" style="display:none;">
                     <label class="form-label">Monto recibido</label>
@@ -363,6 +400,10 @@ function removeFromCart(id) {
 
 let cartTotalAmount = 0;
 
+let appliedDiscountPercent = 0;
+let appliedDiscountToken = null;
+let appliedDiscountBy = '';
+
 function updateSummary() {
     let subtotal = 0;
     let tax = 0;
@@ -371,11 +412,21 @@ function updateSummary() {
         subtotal += lineSubtotal;
         tax += lineSubtotal * (item.taxRate / 100);
     });
-    const total = subtotal + tax;
+    const grossTotal = subtotal + tax;
+    const discountAmount = grossTotal * (appliedDiscountPercent / 100);
+    const total = grossTotal - discountAmount;
     cartTotalAmount = total;
     document.getElementById('cartSubtotal').textContent = 'L ' + subtotal.toFixed(2);
     document.getElementById('cartTax').textContent = 'L ' + tax.toFixed(2);
     document.getElementById('cartTotal').textContent = 'L ' + total.toFixed(2);
+    const discountRow = document.getElementById('cartDiscountRow');
+    if (appliedDiscountPercent > 0) {
+        discountRow.style.display = 'flex';
+        document.getElementById('cartDiscountPercent').textContent = appliedDiscountPercent;
+        document.getElementById('cartDiscountAmount').textContent = '-L ' + discountAmount.toFixed(2);
+    } else {
+        discountRow.style.display = 'none';
+    }
     document.getElementById('checkoutBtn').disabled = cart.length === 0 || !isPaymentBreakdownValid();
     updateCashChange();
     updateMixedPaymentHint();
@@ -661,6 +712,7 @@ function resetSaleForm() {
     cashReceived.value = '';
     mixedCashInput.value = '';
     mixedOtherInput.value = '';
+    clearAppliedDiscount();
     updateSummary();
 }
 
@@ -684,6 +736,10 @@ document.getElementById('saleForm').addEventListener('submit', async (e) => {
     if (paymentMethodSelect.value === 'mixto') {
         payload.mixed_cash_amount = mixedCashInput.value || '0';
         payload.mixed_other_amount = mixedOtherInput.value || '0';
+    }
+    if (appliedDiscountPercent > 0 && appliedDiscountToken) {
+        payload.discount_percent = appliedDiscountPercent;
+        payload.discount_token = appliedDiscountToken;
     }
 
     checkoutBtn.disabled = true;
@@ -897,5 +953,77 @@ document.getElementById('holdSaleBtn').addEventListener('click', async () => {
 });
 
 refreshHeldSalesBadge();
+
+// ---- Descuento con autorización de supervisor ----
+const discountModalEl = document.getElementById('discountModal');
+const discountModal = new bootstrap.Modal(discountModalEl);
+const discountPercentInput = document.getElementById('discountPercentInput');
+const discountSupervisorUser = document.getElementById('discountSupervisorUser');
+const discountSupervisorPass = document.getElementById('discountSupervisorPass');
+const discountError = document.getElementById('discountError');
+const discountAppliedInfo = document.getElementById('discountAppliedInfo');
+const discountAuthorizeBtn = document.getElementById('discountAuthorizeBtn');
+const discountRemoveBtn = document.getElementById('discountRemoveBtn');
+
+function clearAppliedDiscount() {
+    appliedDiscountPercent = 0;
+    appliedDiscountToken = null;
+    appliedDiscountBy = '';
+    discountAppliedInfo.style.display = 'none';
+    discountRemoveBtn.style.display = 'none';
+}
+
+function refreshDiscountModalState() {
+    discountError.style.display = 'none';
+    if (appliedDiscountPercent > 0) {
+        discountAppliedInfo.style.display = 'block';
+        discountAppliedInfo.textContent = `Descuento de ${appliedDiscountPercent}% autorizado por ${appliedDiscountBy}.`;
+        discountRemoveBtn.style.display = 'inline-block';
+    } else {
+        discountAppliedInfo.style.display = 'none';
+        discountRemoveBtn.style.display = 'none';
+        discountPercentInput.value = '';
+        discountSupervisorUser.value = '';
+        discountSupervisorPass.value = '';
+    }
+}
+
+discountModalEl.addEventListener('show.bs.modal', refreshDiscountModalState);
+
+discountAuthorizeBtn.addEventListener('click', async () => {
+    const percent = parseFloat(discountPercentInput.value || '0');
+    if (!percent || percent <= 0 || percent > 100) {
+        discountError.textContent = 'Ingresa un porcentaje de descuento válido (entre 0.01 y 100).';
+        discountError.style.display = 'block';
+        return;
+    }
+    const resp = await fetch('{% url "sales:pos_authorize_discount_api" %}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({
+            percent: percent,
+            username: discountSupervisorUser.value,
+            password: discountSupervisorPass.value,
+        }),
+    });
+    const data = await resp.json();
+    if (!data.ok) {
+        discountError.textContent = data.error || 'No se pudo autorizar el descuento.';
+        discountError.style.display = 'block';
+        return;
+    }
+    appliedDiscountPercent = percent;
+    appliedDiscountToken = data.token;
+    appliedDiscountBy = data.authorized_by;
+    updateSummary();
+    discountModal.hide();
+    showPosMessage(`Descuento de ${percent}% aplicado (autorizado por ${data.authorized_by}).`, 'success');
+});
+
+discountRemoveBtn.addEventListener('click', () => {
+    clearAppliedDiscount();
+    updateSummary();
+    discountModal.hide();
+});
 </script>
 {% endblock %}

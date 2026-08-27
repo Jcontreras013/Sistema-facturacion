@@ -11,6 +11,7 @@ urlpatterns = [
     path("pos/api/suspender/", views.pos_hold_api, name="pos_hold_api"),
     path("pos/api/en-espera/", views.pos_held_list_api, name="pos_held_list_api"),
     path("pos/api/en-espera/<int:pk>/recuperar/", views.pos_held_recall_api, name="pos_held_recall_api"),
+    path("pos/api/autorizar-descuento/", views.pos_authorize_discount_api, name="pos_authorize_discount_api"),
     path("caja/abrir/", views.cash_session_open, name="cash_session_open"),
     path("caja/cerrar/", views.cash_session_close, name="cash_session_close"),
     path("caja/<int:pk>/eliminar/", views.cash_session_delete, name="cash_session_delete"),
