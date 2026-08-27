@@ -22,7 +22,10 @@ def _get_open_session():
     return CashSession.objects.filter(closed_at__isnull=True).order_by("-opened_at").first()
 
 
-def _create_sale(user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes):
+def _create_sale(
+    user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes,
+    mixed_cash_amount=None, mixed_other_amount=None,
+):
     """Crea una venta a partir de un carrito ya validado. Lanza ValueError/InvalidOperation/KeyError/Http404 en caso de error."""
     with transaction.atomic():
         if client_id == "__new__":
@@ -83,6 +86,18 @@ def _create_sale(user, open_session, cart, client_id, client_rtn, new_client_nam
                 f"'{credit_client.name}' no tiene suficiente crédito disponible "
                 f"(disponible: L {credit_available:.2f}, venta: L {sale.total:.2f})."
             )
+
+        if payment_method == "mixto":
+            if mixed_cash_amount is None or mixed_other_amount is None:
+                raise ValueError("Ingresa el monto en efectivo y el monto del otro método para un pago mixto.")
+            combined = mixed_cash_amount + mixed_other_amount
+            if abs(combined - sale.total) > Decimal("0.01"):
+                raise ValueError(
+                    f"La suma de los montos (L {combined:.2f}) no coincide con el total de la venta (L {sale.total:.2f})."
+                )
+            sale.mixed_cash_amount = mixed_cash_amount
+            sale.mixed_other_amount = mixed_other_amount
+            sale.save(update_fields=["mixed_cash_amount", "mixed_other_amount"])
     log_action(user, "created", sale)
     return sale
 
@@ -108,6 +123,8 @@ def pos(request):
         new_client_name = request.POST.get("new_client_name", "").strip()
         payment_method = request.POST.get("payment_method", "efectivo")
         notes = request.POST.get("notes", "")
+        mixed_cash_amount = request.POST.get("mixed_cash_amount") or None
+        mixed_other_amount = request.POST.get("mixed_other_amount") or None
 
         try:
             cart = json.loads(cart_raw)
@@ -120,7 +137,9 @@ def pos(request):
 
         try:
             sale = _create_sale(
-                request.user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes
+                request.user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes,
+                mixed_cash_amount=Decimal(mixed_cash_amount) if mixed_cash_amount else None,
+                mixed_other_amount=Decimal(mixed_other_amount) if mixed_other_amount else None,
             )
         except (ValueError, InvalidOperation, KeyError) as exc:
             messages.error(request, str(exc) or "No se pudo completar la venta.")
@@ -191,13 +210,17 @@ def pos_checkout_api(request):
     new_client_name = (payload.get("new_client_name") or "").strip()
     payment_method = payload.get("payment_method") or "efectivo"
     notes = payload.get("notes") or ""
+    mixed_cash_amount = payload.get("mixed_cash_amount")
+    mixed_other_amount = payload.get("mixed_other_amount")
 
     if not cart:
         return JsonResponse({"ok": False, "error": "Agrega al menos un producto a la venta."}, status=400)
 
     try:
         sale = _create_sale(
-            request.user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes
+            request.user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes,
+            mixed_cash_amount=Decimal(str(mixed_cash_amount)) if mixed_cash_amount not in (None, "") else None,
+            mixed_other_amount=Decimal(str(mixed_other_amount)) if mixed_other_amount not in (None, "") else None,
         )
     except (ValueError, InvalidOperation, KeyError, Http404) as exc:
         return JsonResponse({"ok": False, "error": str(exc) or "No se pudo completar la venta."}, status=400)

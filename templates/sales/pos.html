@@ -93,6 +93,19 @@
                         <strong class="fs-4" id="cashChange">L 0.00</strong>
                     </div>
                 </div>
+                <div id="mixedPaymentBlock" class="border-top pt-2 mt-2" style="display:none;">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label small">Efectivo</label>
+                            <input type="number" id="mixedCashInput" class="form-control" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">Tarjeta / transferencia</label>
+                            <input type="number" id="mixedOtherInput" class="form-control" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="small mt-2" id="mixedPaymentHint"></div>
+                </div>
                 <button type="submit" class="btn btn-success btn-lg mt-3" id="checkoutBtn" disabled>
                     <i class="bi bi-check-circle"></i> Cobrar venta
                 </button>
@@ -352,20 +365,23 @@ function updateSummary() {
     document.getElementById('cartSubtotal').textContent = 'L ' + subtotal.toFixed(2);
     document.getElementById('cartTax').textContent = 'L ' + tax.toFixed(2);
     document.getElementById('cartTotal').textContent = 'L ' + total.toFixed(2);
-    document.getElementById('checkoutBtn').disabled = cart.length === 0;
+    document.getElementById('checkoutBtn').disabled = cart.length === 0 || !isPaymentBreakdownValid();
     updateCashChange();
+    updateMixedPaymentHint();
 }
 
 const cashCalculator = document.getElementById('cashCalculator');
 const cashReceived = document.getElementById('cashReceived');
 const cashChange = document.getElementById('cashChange');
+const mixedPaymentBlock = document.getElementById('mixedPaymentBlock');
+const mixedCashInput = document.getElementById('mixedCashInput');
+const mixedOtherInput = document.getElementById('mixedOtherInput');
+const mixedPaymentHint = document.getElementById('mixedPaymentHint');
 
 function toggleCashCalculator() {
-    if (paymentMethodSelect.value === 'efectivo') {
-        cashCalculator.style.display = 'block';
-    } else {
-        cashCalculator.style.display = 'none';
-    }
+    cashCalculator.style.display = paymentMethodSelect.value === 'efectivo' ? 'block' : 'none';
+    mixedPaymentBlock.style.display = paymentMethodSelect.value === 'mixto' ? 'block' : 'none';
+    updateSummary();
 }
 
 function updateCashChange() {
@@ -380,7 +396,34 @@ function updateCashChange() {
     }
 }
 
+function updateMixedPaymentHint() {
+    if (paymentMethodSelect.value !== 'mixto') return;
+    const cashPart = parseFloat(mixedCashInput.value || '0');
+    const otherPart = parseFloat(mixedOtherInput.value || '0');
+    const combined = cashPart + otherPart;
+    const diff = combined - cartTotalAmount;
+    if (Math.abs(diff) <= 0.01) {
+        mixedPaymentHint.className = 'small mt-2 text-success';
+        mixedPaymentHint.textContent = `Suma correcta: L ${combined.toFixed(2)}.`;
+    } else if (diff < 0) {
+        mixedPaymentHint.className = 'small mt-2 text-danger';
+        mixedPaymentHint.textContent = `Faltan L ${Math.abs(diff).toFixed(2)} para completar el total.`;
+    } else {
+        mixedPaymentHint.className = 'small mt-2 text-danger';
+        mixedPaymentHint.textContent = `Te pasas por L ${diff.toFixed(2)} del total.`;
+    }
+}
+
+function isPaymentBreakdownValid() {
+    if (paymentMethodSelect.value !== 'mixto') return true;
+    const cashPart = parseFloat(mixedCashInput.value || '0');
+    const otherPart = parseFloat(mixedOtherInput.value || '0');
+    return Math.abs((cashPart + otherPart) - cartTotalAmount) <= 0.01;
+}
+
 cashReceived.addEventListener('input', updateCashChange);
+mixedCashInput.addEventListener('input', updateSummary);
+mixedOtherInput.addEventListener('input', updateSummary);
 
 const CLIENTS = {{ clients_json|safe }};
 const clientSearch = document.getElementById('clientSearch');
@@ -602,16 +645,22 @@ function showPosMessage(text, variant) {
 function resetSaleForm() {
     cart = [];
     renderCartTable();
-    updateSummary();
     selectClient('', 'Consumidor final', '');
     notesInput.value = '';
     cashReceived.value = '';
-    updateCashChange();
+    mixedCashInput.value = '';
+    mixedOtherInput.value = '';
+    updateSummary();
 }
 
 document.getElementById('saleForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (cart.length === 0) return;
+
+    if (!isPaymentBreakdownValid()) {
+        showPosMessage('La suma de efectivo y otro método debe ser igual al total antes de cobrar.', 'danger');
+        return;
+    }
 
     const payload = {
         cart: cart.map(i => ({ id: i.id, quantity: i.quantity })),
@@ -621,6 +670,10 @@ document.getElementById('saleForm').addEventListener('submit', async (e) => {
         payment_method: paymentMethodSelect.value,
         notes: notesInput.value,
     };
+    if (paymentMethodSelect.value === 'mixto') {
+        payload.mixed_cash_amount = mixedCashInput.value || '0';
+        payload.mixed_other_amount = mixedOtherInput.value || '0';
+    }
 
     checkoutBtn.disabled = true;
     posMessage.style.display = 'none';

@@ -30,6 +30,9 @@
         <div class="col-md-6 text-md-end">
             <strong>Cajero:</strong> {{ sale.user|default:"—" }}<br>
             <strong>Forma de pago:</strong> {{ sale.get_payment_method_display }}
+            {% if sale.payment_method == "mixto" %}
+                <br><span class="small">Efectivo: L {{ sale.mixed_cash_amount|floatformat:2 }} + Otro: L {{ sale.mixed_other_amount|floatformat:2 }}</span>
+            {% endif %}
         </div>
     </div>
 

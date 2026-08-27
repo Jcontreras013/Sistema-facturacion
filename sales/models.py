@@ -40,10 +40,13 @@ class CashSession(models.Model):
         return self.closed_at is None
 
     def cash_sales_total(self):
-        total = self.sales.filter(status="completada", payment_method="efectivo").aggregate(
+        cash_total = self.sales.filter(status="completada", payment_method="efectivo").aggregate(
             total=models.Sum("total")
-        )["total"]
-        return total or Decimal("0")
+        )["total"] or Decimal("0")
+        mixed_cash_total = self.sales.filter(status="completada", payment_method="mixto").aggregate(
+            total=models.Sum("mixed_cash_amount")
+        )["total"] or Decimal("0")
+        return cash_total + mixed_cash_total
 
     def close(self, counted_amount, closed_by, notes=""):
         import django.utils.timezone as timezone
@@ -63,6 +66,7 @@ class Sale(models.Model):
         ("tarjeta", "Tarjeta"),
         ("transferencia", "Transferencia"),
         ("credito", "Crédito (fiado)"),
+        ("mixto", "Mixto (efectivo + otro)"),
     ]
     STATUS_CHOICES = [
         ("completada", "Completada"),
@@ -86,6 +90,12 @@ class Sale(models.Model):
     tax = models.DecimalField("Impuesto", max_digits=12, decimal_places=2, default=0)
     total = models.DecimalField("Total", max_digits=12, decimal_places=2, default=0)
     notes = models.CharField("Notas", max_length=255, blank=True)
+    mixed_cash_amount = models.DecimalField(
+        "Monto en efectivo (pago mixto)", max_digits=12, decimal_places=2, null=True, blank=True
+    )
+    mixed_other_amount = models.DecimalField(
+        "Monto en otro método (pago mixto)", max_digits=12, decimal_places=2, null=True, blank=True
+    )
     created_at = models.DateTimeField("Fecha", auto_now_add=True)
 
     class Meta:
