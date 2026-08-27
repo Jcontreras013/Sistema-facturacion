@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CashSession, CreditNote, CreditNoteItem, Sale, SaleItem
+from .models import CashSession, CreditNote, CreditNoteItem, HeldSale, Sale, SaleItem
 
 
 class SaleItemInline(admin.TabularInline):
@@ -26,6 +26,11 @@ class CashSessionAdmin(admin.ModelAdmin):
 class CreditNoteItemInline(admin.TabularInline):
     model = CreditNoteItem
     extra = 0
+
+
+@admin.register(HeldSale)
+class HeldSaleAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "client_name", "payment_method", "created_at")
 
 
 @admin.register(CreditNote)

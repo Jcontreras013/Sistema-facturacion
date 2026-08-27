@@ -15,7 +15,7 @@ from core.models import Company
 from core.permissions import admin_required
 from inventory.models import Product, StockMovement
 
-from .models import CashSession, CreditNote, CreditNoteItem, Sale, SaleItem
+from .models import CashSession, CreditNote, CreditNoteItem, HeldSale, Sale, SaleItem
 
 
 def _get_open_session():
@@ -126,6 +126,7 @@ def pos(request):
             messages.error(request, str(exc) or "No se pudo completar la venta.")
             return redirect("sales:pos")
 
+        request.session["last_sale_id"] = sale.pk
         messages.success(request, f"Venta {sale.number} registrada correctamente.")
         return redirect(_sale_redirect_url(sale))
 
@@ -140,6 +141,7 @@ def pos(request):
             "tax_rate": str(p.tax_rate),
             "stock": str(p.stock),
             "unit": p.get_unit_display(),
+            "unit_code": p.unit,
         }
         for p in products
     ]
@@ -200,7 +202,79 @@ def pos_checkout_api(request):
     except (ValueError, InvalidOperation, KeyError, Http404) as exc:
         return JsonResponse({"ok": False, "error": str(exc) or "No se pudo completar la venta."}, status=400)
 
+    request.session["last_sale_id"] = sale.pk
     return JsonResponse({"ok": True, "sale_number": sale.number, "redirect_url": _sale_redirect_url(sale)})
+
+
+@login_required
+def pos_hold_api(request):
+    """Guarda el carrito actual del cajero como una venta en espera, para atender a otro cliente."""
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "error": "Método no permitido."}, status=405)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "Datos inválidos."}, status=400)
+
+    cart = payload.get("cart") or []
+    if not cart:
+        return JsonResponse({"ok": False, "error": "No hay productos en el carrito para suspender."}, status=400)
+
+    held = HeldSale.objects.create(
+        user=request.user,
+        client_id=payload.get("client_id") or "",
+        client_name=payload.get("client_name") or "",
+        client_rtn=payload.get("client_rtn") or "",
+        new_client_name=payload.get("new_client_name") or "",
+        payment_method=payload.get("payment_method") or "efectivo",
+        notes=payload.get("notes") or "",
+        cart_json=json.dumps(cart),
+    )
+    return JsonResponse({"ok": True, "id": held.pk})
+
+
+@login_required
+def pos_held_list_api(request):
+    held_sales = HeldSale.objects.filter(user=request.user).order_by("-created_at")
+    data = []
+    for h in held_sales:
+        try:
+            cart = json.loads(h.cart_json)
+        except json.JSONDecodeError:
+            cart = []
+        data.append(
+            {
+                "id": h.pk,
+                "client_name": h.client_name or "Consumidor final",
+                "item_count": len(cart),
+                "created_at": h.created_at.strftime("%d/%m/%Y %H:%M"),
+            }
+        )
+    return JsonResponse({"ok": True, "held": data})
+
+
+@login_required
+def pos_held_recall_api(request, pk):
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "error": "Método no permitido."}, status=405)
+
+    held = get_object_or_404(HeldSale, pk=pk, user=request.user)
+    try:
+        cart = json.loads(held.cart_json)
+    except json.JSONDecodeError:
+        cart = []
+    data = {
+        "cart": cart,
+        "client_id": held.client_id,
+        "client_name": held.client_name,
+        "client_rtn": held.client_rtn,
+        "new_client_name": held.new_client_name,
+        "payment_method": held.payment_method,
+        "notes": held.notes,
+    }
+    held.delete()
+    return JsonResponse({"ok": True, "sale": data})
 
 
 @login_required
@@ -208,9 +282,22 @@ def sale_detail(request, pk):
     sale = get_object_or_404(Sale.objects.select_related("client", "user"), pk=pk)
     company = Company.load()
     autoprint = request.GET.get("autoprint") == "1" and company.auto_print_on_sale
+    reprint = request.GET.get("reprint") == "1"
     return render(
-        request, "sales/sale_detail.html", {"sale": sale, "company": company, "autoprint": autoprint}
+        request,
+        "sales/sale_detail.html",
+        {"sale": sale, "company": company, "autoprint": autoprint, "reprint": reprint},
     )
+
+
+@login_required
+def reprint_last_sale(request):
+    """Atajo para el cajero: reimprimir la última factura que cobró, sin ir al historial."""
+    last_sale_id = request.session.get("last_sale_id")
+    if not last_sale_id or not Sale.objects.filter(pk=last_sale_id).exists():
+        messages.info(request, "Todavía no has cobrado ninguna venta en esta sesión para reimprimir.")
+        return redirect("sales:pos")
+    return redirect(reverse("sales:sale_detail", args=[last_sale_id]) + "?reprint=1")
 
 
 @login_required

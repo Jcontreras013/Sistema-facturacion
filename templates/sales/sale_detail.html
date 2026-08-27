@@ -145,12 +145,12 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if autoprint %}
+{% if autoprint or reprint %}
 <script>
 window.addEventListener('load', function () {
     window.print();
 });
-{% if sale.status == "completada" %}
+{% if autoprint and sale.status == "completada" %}
 let thankYouShown = false;
 function showThankYouOverlay() {
     if (thankYouShown) return;

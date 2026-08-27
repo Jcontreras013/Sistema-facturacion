@@ -6,6 +6,29 @@
     <span class="badge bg-success">Caja abierta desde {{ open_session.opened_at|date:"d/m/Y H:i" }}</span>
 </div>
 
+<div class="d-flex gap-2 mb-3 flex-wrap" id="posToolbar">
+    <a href="{% url 'sales:reprint_last_sale' %}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi bi-printer"></i> Reimprimir última</a>
+    <button type="button" id="holdSaleBtn" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pause-circle"></i> Suspender venta</button>
+    <button type="button" id="heldSalesBtn" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#heldSalesModal">
+        <i class="bi bi-hourglass-split"></i> Ventas en espera <span class="badge bg-secondary" id="heldSalesBadge">0</span>
+    </button>
+</div>
+
+<div class="modal fade" id="heldSalesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-hourglass-split"></i> Ventas en espera</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="heldSalesList" class="list-group"></div>
+                <p class="text-muted mb-0 mt-2" id="heldSalesEmpty" style="display:none;">No tienes ventas en espera.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row g-4">
     <div class="col-md-7">
         <div class="position-relative mb-3">
@@ -126,6 +149,7 @@
 {% block extra_js %}
 <script>
 const PRODUCTS = {{ products_json|safe }};
+const WEIGHTED_UNITS = new Set(['lb', 'kg', 'litro']);
 let cart = [];
 let searchMatches = [];
 let searchActiveIndex = -1;
@@ -147,13 +171,15 @@ function renderCartTable() {
 
     cart.forEach((item, index) => {
         const lineSubtotal = item.price * item.quantity;
+        const isWeighted = WEIGHTED_UNITS.has(item.unitCode);
+        const step = isWeighted ? '0.01' : '1';
         const row = document.createElement('tr');
         row.dataset.cartIndex = index;
         row.innerHTML = `
             <td class="fw-bold">${item.name}</td>
             <td class="text-muted small">${item.code}</td>
             <td class="text-end text-success">L ${item.price.toFixed(2)}</td>
-            <td class="text-end"><input type="number" min="0" step="1" value="${item.quantity}" class="form-control form-control-sm ms-auto" style="width:80px" data-id="${item.id}"></td>
+            <td class="text-end"><input type="number" min="0" step="${step}" inputmode="${isWeighted ? 'decimal' : 'numeric'}" value="${item.quantity}" class="form-control form-control-sm ms-auto" style="width:90px" data-id="${item.id}"> <span class="small text-muted">${item.unit}</span></td>
             <td class="text-end">L ${lineSubtotal.toFixed(2)}</td>
             <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-remove="${item.id}"><i class="bi bi-x"></i></button></td>
         `;
@@ -259,9 +285,11 @@ function selectSearchMatch(product) {
 
 function addToCart(product) {
     const existing = cart.find(item => item.id === product.id);
+    const isWeighted = WEIGHTED_UNITS.has(product.unit_code);
+    const increment = isWeighted ? 0.5 : 1;
     if (existing) {
         if (existing.quantity < parseFloat(product.stock)) {
-            existing.quantity += 1;
+            existing.quantity = Math.min(existing.quantity + increment, parseFloat(product.stock));
         }
     } else {
         cart.push({
@@ -271,7 +299,9 @@ function addToCart(product) {
             price: parseFloat(product.price),
             taxRate: parseFloat(product.tax_rate),
             stock: parseFloat(product.stock),
-            quantity: 1,
+            unit: product.unit,
+            unitCode: product.unit_code,
+            quantity: isWeighted ? Math.min(increment, parseFloat(product.stock)) : 1,
         });
     }
     renderCartTable();
@@ -686,5 +716,120 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     runFKeyAction(e.key);
 });
+
+// ---- Suspender / recuperar venta ----
+const csrfToken = document.querySelector('#saleForm [name=csrfmiddlewaretoken]').value;
+const heldSalesModalEl = document.getElementById('heldSalesModal');
+const heldSalesModal = new bootstrap.Modal(heldSalesModalEl);
+const heldSalesList = document.getElementById('heldSalesList');
+const heldSalesEmpty = document.getElementById('heldSalesEmpty');
+const heldSalesBadge = document.getElementById('heldSalesBadge');
+
+async function refreshHeldSalesBadge() {
+    try {
+        const resp = await fetch('{% url "sales:pos_held_list_api" %}');
+        const data = await resp.json();
+        const count = (data.held || []).length;
+        heldSalesBadge.textContent = count;
+        heldSalesBadge.classList.toggle('bg-secondary', count === 0);
+        heldSalesBadge.classList.toggle('bg-warning', count > 0);
+        return data.held || [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function renderHeldSalesList(held) {
+    heldSalesList.innerHTML = '';
+    heldSalesEmpty.style.display = held.length ? 'none' : 'block';
+    held.forEach(h => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+        btn.innerHTML = `
+            <span><span class="fw-bold">${h.client_name}</span> <span class="text-muted small">${h.item_count} producto(s) — ${h.created_at}</span></span>
+            <i class="bi bi-arrow-return-left"></i>
+        `;
+        btn.addEventListener('click', () => recallHeldSale(h.id));
+        heldSalesList.appendChild(btn);
+    });
+}
+
+heldSalesModalEl.addEventListener('show.bs.modal', async () => {
+    const held = await refreshHeldSalesBadge();
+    renderHeldSalesList(held);
+});
+
+async function recallHeldSale(id) {
+    const resp = await fetch(`/ventas/pos/api/en-espera/${id}/recuperar/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken },
+    });
+    const data = await resp.json();
+    if (!data.ok) {
+        showPosMessage(data.error || 'No se pudo recuperar la venta en espera.', 'danger');
+        return;
+    }
+    const held = data.sale;
+    cart = held.cart.map(entry => {
+        const product = PRODUCTS.find(p => p.id === entry.id);
+        if (!product) return null;
+        return {
+            id: product.id,
+            name: product.name,
+            code: product.code,
+            price: parseFloat(product.price),
+            taxRate: parseFloat(product.tax_rate),
+            stock: parseFloat(product.stock),
+            unit: product.unit,
+            unitCode: product.unit_code,
+            quantity: parseFloat(entry.quantity),
+        };
+    }).filter(Boolean);
+    renderCartTable();
+    updateSummary();
+    selectClient(held.client_id, held.client_name || 'Consumidor final', held.client_rtn);
+    newClientName.value = held.new_client_name || '';
+    if (held.payment_method) {
+        paymentMethodSelect.value = held.payment_method;
+    }
+    notesInput.value = held.notes || '';
+    toggleCashCalculator();
+    heldSalesModal.hide();
+    refreshHeldSalesBadge();
+    showPosMessage('Venta recuperada. Continúa donde la dejaste.', 'success');
+}
+
+document.getElementById('holdSaleBtn').addEventListener('click', async () => {
+    if (cart.length === 0) {
+        showPosMessage('No hay productos en el carrito para suspender.', 'warning');
+        return;
+    }
+    const payload = {
+        cart: cart.map(i => ({ id: i.id, quantity: i.quantity })),
+        client_id: clientIdInput.value,
+        client_name: currentClient.name,
+        client_rtn: clientRtn.value,
+        new_client_name: newClientName.value,
+        payment_method: paymentMethodSelect.value,
+        notes: notesInput.value,
+    };
+    const resp = await fetch('{% url "sales:pos_hold_api" %}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (!data.ok) {
+        showPosMessage(data.error || 'No se pudo suspender la venta.', 'danger');
+        return;
+    }
+    resetSaleForm();
+    searchBox.focus();
+    refreshHeldSalesBadge();
+    showPosMessage('Venta suspendida. Puedes recuperarla desde "Ventas en espera".', 'success');
+});
+
+refreshHeldSalesBadge();
 </script>
 {% endblock %}

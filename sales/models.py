@@ -185,6 +185,30 @@ class CreditNote(models.Model):
         self.save(update_fields=["subtotal", "tax", "total"])
 
 
+class HeldSale(models.Model):
+    """Una venta que el cajero dejó en espera (suspendida) para atender a otro cliente."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Cajero", on_delete=models.CASCADE, related_name="held_sales"
+    )
+    client_id = models.CharField("ID de cliente (crudo)", max_length=20, blank=True)
+    client_name = models.CharField("Cliente", max_length=150, blank=True)
+    client_rtn = models.CharField("RTN del cliente", max_length=30, blank=True)
+    new_client_name = models.CharField("Nombre de cliente nuevo", max_length=150, blank=True)
+    payment_method = models.CharField("Forma de pago", max_length=20, blank=True)
+    notes = models.CharField("Notas", max_length=255, blank=True)
+    cart_json = models.TextField("Carrito (JSON)")
+    created_at = models.DateTimeField("Puesta en espera", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Venta en espera"
+        verbose_name_plural = "Ventas en espera"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Venta en espera #{self.pk} ({self.client_name or 'Consumidor final'})"
+
+
 class CreditNoteItem(models.Model):
     credit_note = models.ForeignKey(CreditNote, on_delete=models.CASCADE, related_name="items")
     sale_item = models.ForeignKey(SaleItem, on_delete=models.PROTECT, related_name="credit_note_items")
