@@ -51,6 +51,15 @@
                 {{ form.tax_rate }}
                 <small class="text-muted">{{ form.tax_rate.help_text }}</small>
             </div>
+            <div class="col-md-3">
+                <label class="form-label">{{ form.wholesale_price.label }}</label>
+                {{ form.wholesale_price }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">{{ form.wholesale_min_qty.label }}</label>
+                {{ form.wholesale_min_qty }}
+                <small class="text-muted">{{ form.wholesale_min_qty.help_text }}</small>
+            </div>
             <div class="col-md-4">
                 <label class="form-label">{{ form.stock.label }}</label>
                 {{ form.stock }}

@@ -20,6 +20,9 @@
                 <tr><th>Proveedor</th><td>{{ product.provider|default:"—" }}</td></tr>
                 <tr><th>Precio de compra</th><td>L {{ product.purchase_price|floatformat:2 }}</td></tr>
                 <tr><th>Precio de venta</th><td>L {{ product.sale_price|floatformat:2 }}</td></tr>
+                {% if product.has_wholesale_price %}
+                <tr><th>Precio de mayoreo</th><td>L {{ product.wholesale_price|floatformat:2 }} desde {{ product.wholesale_min_qty }} {{ product.get_unit_display }}</td></tr>
+                {% endif %}
                 <tr><th>ISV</th><td>{{ product.tax_rate|floatformat:0 }}%</td></tr>
                 <tr><th>Margen</th><td>{{ product.profit_margin|floatformat:1 }}%</td></tr>
                 <tr><th>Existencias</th><td>{{ product.stock }} {{ product.get_unit_display }}

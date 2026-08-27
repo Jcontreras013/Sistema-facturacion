@@ -57,6 +57,14 @@ class Product(models.Model):
     unit = models.CharField("Unidad de medida", max_length=20, choices=UNIT_CHOICES, default="unidad")
     purchase_price = models.DecimalField("Precio de compra", max_digits=10, decimal_places=2, default=0)
     sale_price = models.DecimalField("Precio de venta", max_digits=10, decimal_places=2, default=0)
+    wholesale_price = models.DecimalField(
+        "Precio de mayoreo", max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Precio por unidad cuando se compra desde la cantidad mínima de mayoreo. Déjalo vacío para no ofrecer mayoreo.",
+    )
+    wholesale_min_qty = models.DecimalField(
+        "Cantidad mínima de mayoreo", max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="A partir de esta cantidad se aplica automáticamente el precio de mayoreo en el POS.",
+    )
     tax_rate = models.DecimalField(
         "Tasa de ISV (%)", max_digits=5, decimal_places=2, default=Decimal("15.00"),
         help_text="15% para la mayoría de productos, 18% para bebidas alcohólicas y tabaco.",
@@ -82,6 +90,15 @@ class Product(models.Model):
     @property
     def is_low_stock(self):
         return self.stock <= self.min_stock
+
+    @property
+    def has_wholesale_price(self):
+        return bool(self.wholesale_price and self.wholesale_min_qty)
+
+    def price_for_quantity(self, quantity):
+        if self.has_wholesale_price and quantity >= self.wholesale_min_qty:
+            return self.wholesale_price
+        return self.sale_price
 
     @property
     def profit_margin(self):

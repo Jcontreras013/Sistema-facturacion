@@ -68,7 +68,7 @@ def _create_sale(
                 sale=sale,
                 product=product,
                 quantity=quantity,
-                unit_price=product.sale_price,
+                unit_price=product.price_for_quantity(quantity),
                 tax_rate=product.tax_rate,
             )
             StockMovement.objects.create(
@@ -161,6 +161,8 @@ def pos(request):
             "stock": str(p.stock),
             "unit": p.get_unit_display(),
             "unit_code": p.unit,
+            "wholesale_price": str(p.wholesale_price) if p.wholesale_price else "",
+            "wholesale_min_qty": str(p.wholesale_min_qty) if p.wholesale_min_qty else "",
         }
         for p in products
     ]
