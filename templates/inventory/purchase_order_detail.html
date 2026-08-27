@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Orden {{ order.number }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-cart-check"></i></div>
+        <div>
+            <h2>Orden {{ order.number }}</h2>
+            <p class="page-header-subtitle">
+                Proveedor: {{ order.provider.name }} —
+                {% if order.status == "borrador" %}<span class="badge bg-secondary">Borrador</span>
+                {% elif order.status == "enviada" %}<span class="badge bg-warning text-dark">Enviada</span>
+                {% elif order.status == "recibida" %}<span class="badge bg-success">Recibida</span>
+                {% else %}<span class="badge bg-danger">Cancelada</span>{% endif %}
+            </p>
+        </div>
+    </div>
+    <div class="page-header-actions">
+        {% if order.status == "borrador" %}
+        <form method="post" action="{% url 'inventory:purchase_order_send' order.pk %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary"><i class="bi bi-send"></i> Marcar como enviada</button>
+        </form>
+        <a href="{% url 'inventory:purchase_order_delete' order.pk %}" class="btn btn-outline-danger"><i class="bi bi-trash"></i> Eliminar</a>
+        {% endif %}
+        {% if order.status == "enviada" %}
+        <form method="post" action="{% url 'inventory:purchase_order_cancel' order.pk %}" class="d-inline" onsubmit="return confirm('¿Cancelar esta orden de compra?');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i> Cancelar orden</button>
+        </form>
+        {% endif %}
+        <a href="{% url 'inventory:purchase_order_list' %}" class="btn btn-outline-secondary">Volver</a>
+    </div>
+</div>
+
+{% if order.notes %}<p class="text-muted">Notas: {{ order.notes }}</p>{% endif %}
+
+<div class="card p-3 mb-3">
+    <table class="table table-sm mb-0">
+        <thead><tr><th>Producto</th><th class="text-end">Pedido</th><th class="text-end">Recibido</th><th class="text-end">Costo unit.</th><th class="text-end">Subtotal</th>{% if order.status == "borrador" %}<th></th>{% endif %}</tr></thead>
+        <tbody>
+        {% for item in order.items.all %}
+            <tr>
+                <td>{{ item.product.name }}</td>
+                <td class="text-end">{{ item.quantity_ordered }}</td>
+                <td class="text-end">{{ item.quantity_received }}</td>
+                <td class="text-end">L {{ item.unit_cost|floatformat:2 }}</td>
+                <td class="text-end">L {{ item.subtotal|floatformat:2 }}</td>
+                {% if order.status == "borrador" %}
+                <td class="text-end">
+                    <form method="post" action="{% url 'inventory:purchase_order_remove_item' order.pk item.pk %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-x"></i></button>
+                    </form>
+                </td>
+                {% endif %}
+            </tr>
+        {% empty %}
+            <tr><td colspan="6">
+                <div class="empty-state py-3">
+                    <i class="bi bi-box-seam"></i>
+                    <p>Todavía no agregas productos a esta orden.</p>
+                </div>
+            </td></tr>
+        {% endfor %}
+        </tbody>
+        {% if order.items.all %}
+        <tfoot>
+            <tr class="fw-bold"><td colspan="4">Total</td><td class="text-end">L {{ order.total_cost|floatformat:2 }}</td>{% if order.status == "borrador" %}<td></td>{% endif %}</tr>
+        </tfoot>
+        {% endif %}
+    </table>
+</div>
+
+{% if order.status == "borrador" %}
+<div class="card p-3 mb-3">
+    <h6 class="card-section-title"><i class="bi bi-plus-lg"></i> Agregar producto</h6>
+    <form method="post" action="{% url 'inventory:purchase_order_add_item' order.pk %}" class="row g-2 align-items-end">
+        {% csrf_token %}
+        <div class="col-md-5">
+            <label class="form-label small">Producto</label>
+            <select name="product" class="form-select" required>
+                {% for product in products %}
+                    <option value="{{ product.pk }}">{{ product.name }} ({{ product.code }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small">Cantidad</label>
+            <input type="number" name="quantity_ordered" class="form-control" min="0.01" step="0.01" required>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small">Costo unitario</label>
+            <input type="number" name="unit_cost" class="form-control" min="0" step="0.01" required>
+        </div>
+        <div class="col-md-1">
+            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i></button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+{% if order.status == "enviada" %}
+<div class="card p-3">
+    <h6 class="card-section-title"><i class="bi bi-box-arrow-in-down"></i> Recibir mercancía</h6>
+    <p class="text-muted small">Ingresa la cantidad que realmente llegó de cada producto (puede ser parcial). El stock se actualiza automáticamente al confirmar.</p>
+    <form method="post" action="{% url 'inventory:purchase_order_receive' order.pk %}">
+        {% csrf_token %}
+        <table class="table table-sm">
+            <thead><tr><th>Producto</th><th>Pendiente</th><th>Cantidad recibida ahora</th></tr></thead>
+            <tbody>
+            {% for item in order.items.all %}
+                {% if item.pending_quantity > 0 %}
+                <tr>
+                    <td>{{ item.product.name }}</td>
+                    <td>{{ item.pending_quantity }}</td>
+                    <td>
+                        <input type="hidden" name="item_id" value="{{ item.pk }}">
+                        <input type="number" name="received_quantity" min="0" max="{{ item.pending_quantity }}" step="0.01" class="form-control form-control-sm" style="width:120px">
+                    </td>
+                </tr>
+                {% endif %}
+            {% endfor %}
+            </tbody>
+        </table>
+        <button type="submit" class="btn btn-success"><i class="bi bi-check-circle"></i> Confirmar recepción</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

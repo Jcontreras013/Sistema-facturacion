@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-cart-check"></i></div>
+        <div>
+            <h2>{{ title }}</h2>
+            <p class="page-header-subtitle">Después de crearla podrás agregar los productos a pedir</p>
+        </div>
+    </div>
+</div>
+<div class="card p-4" style="max-width: 600px;">
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">{{ form.provider.label }}</label>
+            {{ form.provider }}
+        </div>
+        <div class="mb-3">
+            <label class="form-label">{{ form.notes.label }}</label>
+            {{ form.notes }}
+        </div>
+        <button type="submit" class="btn btn-primary">Crear orden</button>
+        <a href="{% url 'inventory:purchase_order_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

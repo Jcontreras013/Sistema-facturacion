@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Category, Product, Promotion, Provider, StockMovement
+from .models import Category, Product, Promotion, PurchaseOrder, Provider, StockMovement
 
 
 class CategoryForm(forms.ModelForm):
@@ -96,6 +96,16 @@ class PromotionForm(forms.ModelForm):
         if start_date and end_date and end_date < start_date:
             raise forms.ValidationError("La fecha de fin debe ser igual o posterior a la fecha de inicio.")
         return cleaned_data
+
+
+class PurchaseOrderForm(forms.ModelForm):
+    class Meta:
+        model = PurchaseOrder
+        fields = ["provider", "notes"]
+        widgets = {
+            "provider": forms.Select(attrs={"class": "form-select"}),
+            "notes": forms.TextInput(attrs={"class": "form-control", "placeholder": "Notas (opcional)"}),
+        }
 
 
 class StockMovementForm(forms.ModelForm):

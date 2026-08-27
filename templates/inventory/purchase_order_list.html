@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Órdenes de compra{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-cart-check"></i></div>
+        <div>
+            <h2>Órdenes de compra</h2>
+            <p class="page-header-subtitle">Pedidos a proveedores y su recepción de mercancía</p>
+        </div>
+    </div>
+    <div class="page-header-actions">
+        <a href="{% url 'inventory:purchase_order_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nueva orden</a>
+    </div>
+</div>
+<div class="card">
+    <table class="table table-hover mb-0">
+        <thead><tr><th>No.</th><th>Proveedor</th><th>Estado</th><th class="text-end">Total</th><th>Fecha</th><th></th></tr></thead>
+        <tbody>
+        {% for order in orders %}
+            <tr>
+                <td><a href="{% url 'inventory:purchase_order_detail' order.pk %}">{{ order.number }}</a></td>
+                <td>{{ order.provider.name }}</td>
+                <td>
+                    {% if order.status == "borrador" %}<span class="badge bg-secondary">Borrador</span>
+                    {% elif order.status == "enviada" %}<span class="badge bg-warning text-dark">Enviada</span>
+                    {% elif order.status == "recibida" %}<span class="badge bg-success">Recibida</span>
+                    {% else %}<span class="badge bg-danger">Cancelada</span>{% endif %}
+                </td>
+                <td class="text-end">L {{ order.total_cost|floatformat:2 }}</td>
+                <td>{{ order.created_at|date:"d/m/Y H:i" }}</td>
+                <td class="text-end"><a href="{% url 'inventory:purchase_order_detail' order.pk %}" class="btn btn-sm btn-outline-secondary">Ver</a></td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="6">
+                <div class="empty-state py-4">
+                    <i class="bi bi-cart-check"></i>
+                    <p>No hay órdenes de compra registradas.</p>
+                </div>
+            </td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

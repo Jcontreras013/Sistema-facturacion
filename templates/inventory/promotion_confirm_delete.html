@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Eliminar promoción{% endblock %}
+{% block content %}
+<div class="confirm-delete-wrap">
+<div class="card confirm-delete-card">
+    <div class="confirm-delete-icon"><i class="bi bi-exclamation-triangle"></i></div>
+    <h2>Eliminar promoción</h2>
+    <p>¿Seguro que deseas eliminar la promoción <strong>{{ promotion.name }}</strong>?</p>
+    <form method="post" class="confirm-delete-actions">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+        <a href="{% url 'inventory:promotion_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>
+</div>
+{% endblock %}

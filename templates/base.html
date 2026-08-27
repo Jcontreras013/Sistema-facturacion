@@ -31,6 +31,7 @@
                 {% if is_admin %}
                 <li class="nav-item"><a class="nav-link" href="{% url 'inventory:category_list' %}"><i class="bi bi-tags"></i> Categorías</a></li>
                 <li class="nav-item"><a class="nav-link" href="{% url 'inventory:provider_list' %}"><i class="bi bi-truck"></i> Proveedores</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'inventory:purchase_order_list' %}"><i class="bi bi-cart-check"></i> Compras</a></li>
                 {% endif %}
                 <li class="nav-item"><a class="nav-link" href="{% url 'clients:client_list' %}"><i class="bi bi-people"></i> Clientes</a></li>
                 <li class="nav-item"><a class="nav-link" href="{% url 'sales:cash_session_close' %}"><i class="bi bi-safe"></i> Caja</a></li>

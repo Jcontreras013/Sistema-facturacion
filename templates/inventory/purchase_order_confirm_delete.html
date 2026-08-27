@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Eliminar orden de compra{% endblock %}
+{% block content %}
+<div class="confirm-delete-wrap">
+<div class="card confirm-delete-card">
+    <div class="confirm-delete-icon"><i class="bi bi-exclamation-triangle"></i></div>
+    <h2>Eliminar orden de compra</h2>
+    <p>¿Seguro que deseas eliminar la orden <strong>{{ order.number }}</strong>?</p>
+    <form method="post" class="confirm-delete-actions">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+        <a href="{% url 'inventory:purchase_order_detail' order.pk %}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>
+</div>
+{% endblock %}

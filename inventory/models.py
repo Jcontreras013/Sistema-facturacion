@@ -1,6 +1,7 @@
 import datetime
 from decimal import Decimal
 
+from django.conf import settings
 from django.db import models
 from django.urls import reverse
 
@@ -222,3 +223,73 @@ class Promotion(models.Model):
     @property
     def applies_to(self):
         return self.product.name if self.product else f"Categoría: {self.category.name}"
+
+
+class PurchaseOrder(models.Model):
+    STATUS_CHOICES = [
+        ("borrador", "Borrador"),
+        ("enviada", "Enviada al proveedor"),
+        ("recibida", "Recibida"),
+        ("cancelada", "Cancelada"),
+    ]
+
+    number = models.CharField("No. de orden", max_length=20, unique=True, blank=True)
+    provider = models.ForeignKey(
+        Provider, verbose_name="Proveedor", on_delete=models.PROTECT, related_name="purchase_orders"
+    )
+    status = models.CharField("Estado", max_length=15, choices=STATUS_CHOICES, default="borrador")
+    notes = models.CharField("Notas", max_length=255, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Creada por", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    created_at = models.DateTimeField("Creada", auto_now_add=True)
+    received_at = models.DateTimeField("Recibida", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Orden de compra"
+        verbose_name_plural = "Órdenes de compra"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.number or f"OC-{self.pk}"
+
+    def save(self, *args, **kwargs):
+        if not self.number:
+            last = PurchaseOrder.objects.order_by("-id").first()
+            next_id = (last.id + 1) if last else 1
+            self.number = f"OC-{next_id:06d}"
+        super().save(*args, **kwargs)
+
+    @property
+    def total_cost(self):
+        return sum((item.subtotal for item in self.items.all()), Decimal("0"))
+
+    @property
+    def is_fully_received(self):
+        items = list(self.items.all())
+        return bool(items) and all(item.quantity_received >= item.quantity_ordered for item in items)
+
+
+class PurchaseOrderItem(models.Model):
+    purchase_order = models.ForeignKey(PurchaseOrder, on_delete=models.CASCADE, related_name="items")
+    product = models.ForeignKey(
+        Product, verbose_name="Producto", on_delete=models.PROTECT, related_name="purchase_order_items"
+    )
+    quantity_ordered = models.DecimalField("Cantidad pedida", max_digits=10, decimal_places=2)
+    quantity_received = models.DecimalField("Cantidad recibida", max_digits=10, decimal_places=2, default=0)
+    unit_cost = models.DecimalField("Costo unitario", max_digits=10, decimal_places=2)
+
+    class Meta:
+        verbose_name = "Detalle de orden de compra"
+        verbose_name_plural = "Detalles de orden de compra"
+
+    def __str__(self):
+        return f"{self.product.name} x {self.quantity_ordered}"
+
+    @property
+    def subtotal(self):
+        return self.quantity_ordered * self.unit_cost
+
+    @property
+    def pending_quantity(self):
+        return self.quantity_ordered - self.quantity_received

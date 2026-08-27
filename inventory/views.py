@@ -12,7 +12,9 @@ from core.audit import log_action
 from core.models import AuditLog
 from core.permissions import admin_required
 
-from .forms import CategoryForm, ProductForm, PromotionForm, ProviderForm, StockMovementForm
+from django.db import transaction
+
+from .forms import CategoryForm, ProductForm, PromotionForm, PurchaseOrderForm, ProviderForm, StockMovementForm
 from .importers import (
     PRODUCT_FIELDS,
     detect_column_mapping,
@@ -23,7 +25,7 @@ from .importers import (
     parse_tax_rate,
     parse_uploaded_file,
 )
-from .models import Category, Product, Promotion, Provider, StockMovement
+from .models import Category, Product, Promotion, PurchaseOrder, PurchaseOrderItem, Provider, StockMovement
 
 IMPORT_SESSION_PATH = "product_import_path"
 IMPORT_SESSION_NAME = "product_import_name"
@@ -230,6 +232,154 @@ def promotion_delete(request, pk):
         messages.success(request, "Promoción eliminada.")
         return redirect("inventory:promotion_list")
     return render(request, "inventory/promotion_confirm_delete.html", {"promotion": promotion})
+
+
+@admin_required
+def purchase_order_list(request):
+    orders = PurchaseOrder.objects.select_related("provider").all()
+    return render(request, "inventory/purchase_order_list.html", {"orders": orders})
+
+
+@admin_required
+def purchase_order_create(request):
+    if request.method == "POST":
+        form = PurchaseOrderForm(request.POST)
+        if form.is_valid():
+            order = form.save(commit=False)
+            order.created_by = request.user
+            order.save()
+            log_action(request.user, "created", order)
+            messages.success(request, f"Orden {order.number} creada. Ahora agrega los productos.")
+            return redirect("inventory:purchase_order_detail", pk=order.pk)
+    else:
+        form = PurchaseOrderForm()
+    return render(request, "inventory/purchase_order_form.html", {"form": form, "title": "Nueva orden de compra"})
+
+
+@admin_required
+def purchase_order_detail(request, pk):
+    order = get_object_or_404(PurchaseOrder.objects.select_related("provider", "created_by"), pk=pk)
+    products = Product.objects.filter(is_active=True).order_by("name")
+    return render(
+        request,
+        "inventory/purchase_order_detail.html",
+        {"order": order, "products": products},
+    )
+
+
+@admin_required
+def purchase_order_add_item(request, pk):
+    order = get_object_or_404(PurchaseOrder, pk=pk)
+    if request.method == "POST" and order.status == "borrador":
+        product = get_object_or_404(Product, pk=request.POST.get("product"))
+        try:
+            quantity = Decimal(request.POST.get("quantity_ordered", "0"))
+            unit_cost = Decimal(request.POST.get("unit_cost", "0"))
+        except Exception:
+            messages.error(request, "Cantidad o costo inválido.")
+            return redirect("inventory:purchase_order_detail", pk=order.pk)
+        if quantity <= 0:
+            messages.error(request, "La cantidad debe ser mayor a cero.")
+            return redirect("inventory:purchase_order_detail", pk=order.pk)
+        PurchaseOrderItem.objects.create(
+            purchase_order=order, product=product, quantity_ordered=quantity, unit_cost=unit_cost
+        )
+        messages.success(request, f"'{product.name}' agregado a la orden.")
+    return redirect("inventory:purchase_order_detail", pk=order.pk)
+
+
+@admin_required
+def purchase_order_remove_item(request, pk, item_pk):
+    order = get_object_or_404(PurchaseOrder, pk=pk)
+    item = get_object_or_404(PurchaseOrderItem, pk=item_pk, purchase_order=order)
+    if request.method == "POST" and order.status == "borrador":
+        item.delete()
+        messages.success(request, "Producto quitado de la orden.")
+    return redirect("inventory:purchase_order_detail", pk=order.pk)
+
+
+@admin_required
+def purchase_order_send(request, pk):
+    order = get_object_or_404(PurchaseOrder, pk=pk)
+    if request.method == "POST" and order.status == "borrador":
+        if not order.items.exists():
+            messages.error(request, "Agrega al menos un producto antes de enviar la orden.")
+        else:
+            order.status = "enviada"
+            order.save(update_fields=["status"])
+            log_action(request.user, "updated", order, extra="Orden enviada al proveedor")
+            messages.success(request, f"Orden {order.number} marcada como enviada.")
+    return redirect("inventory:purchase_order_detail", pk=order.pk)
+
+
+@admin_required
+def purchase_order_receive(request, pk):
+    order = get_object_or_404(PurchaseOrder, pk=pk)
+    if request.method == "POST" and order.status in ("enviada", "recibida"):
+        item_ids = request.POST.getlist("item_id")
+        received_quantities = request.POST.getlist("received_quantity")
+        with transaction.atomic():
+            for item_id, qty_raw in zip(item_ids, received_quantities):
+                qty_raw = (qty_raw or "").strip()
+                if not qty_raw:
+                    continue
+                try:
+                    entered = Decimal(qty_raw)
+                except Exception:
+                    continue
+                if entered <= 0:
+                    continue
+                item = get_object_or_404(PurchaseOrderItem, pk=item_id, purchase_order=order)
+                new_amount = min(entered, item.pending_quantity)
+                if new_amount <= 0:
+                    continue
+                StockMovement.objects.create(
+                    product=item.product,
+                    movement_type="in",
+                    reason_category="compra",
+                    quantity=new_amount,
+                    reason=f"Recepción de orden de compra {order.number}",
+                    user=request.user,
+                )
+                item.quantity_received += new_amount
+                item.save(update_fields=["quantity_received"])
+
+            order.refresh_from_db()
+            if order.is_fully_received:
+                import django.utils.timezone as timezone
+
+                order.status = "recibida"
+                order.received_at = timezone.now()
+                order.save(update_fields=["status", "received_at"])
+        log_action(request.user, "updated", order, extra="Mercancía recibida")
+        messages.success(request, "Recepción de mercancía registrada. El stock ya fue actualizado.")
+    return redirect("inventory:purchase_order_detail", pk=order.pk)
+
+
+@admin_required
+def purchase_order_cancel(request, pk):
+    order = get_object_or_404(PurchaseOrder, pk=pk)
+    if request.method == "POST" and order.status in ("borrador", "enviada"):
+        order.status = "cancelada"
+        order.save(update_fields=["status"])
+        log_action(request.user, "updated", order, extra="Orden cancelada")
+        messages.success(request, f"Orden {order.number} cancelada.")
+    return redirect("inventory:purchase_order_detail", pk=order.pk)
+
+
+@admin_required
+def purchase_order_delete(request, pk):
+    order = get_object_or_404(PurchaseOrder, pk=pk)
+    if order.status != "borrador":
+        messages.error(request, "Solo puedes eliminar órdenes que todavía están en borrador.")
+        return redirect("inventory:purchase_order_detail", pk=order.pk)
+    if request.method == "POST":
+        number = order.number
+        log_action(request.user, "deleted", order)
+        order.delete()
+        messages.success(request, f"Orden {number} eliminada.")
+        return redirect("inventory:purchase_order_list")
+    return render(request, "inventory/purchase_order_confirm_delete.html", {"order": order})
 
 
 @admin_required

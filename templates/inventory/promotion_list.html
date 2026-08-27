@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Promociones{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-tag"></i></div>
+        <div>
+            <h2>Promociones</h2>
+            <p class="page-header-subtitle">Descuentos programados por producto o categoría</p>
+        </div>
+    </div>
+    <div class="page-header-actions">
+        <a href="{% url 'inventory:promotion_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nueva promoción</a>
+    </div>
+</div>
+<div class="card">
+    <table class="table table-hover mb-0">
+        <thead><tr><th>Nombre</th><th>Aplica a</th><th>Descuento</th><th>Vigencia</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+        {% for promotion in promotions %}
+            <tr>
+                <td>{{ promotion.name }}</td>
+                <td>{{ promotion.applies_to }}</td>
+                <td>{{ promotion.discount_percent|floatformat:0 }}%</td>
+                <td>{{ promotion.start_date|date:"d/m/Y" }} — {{ promotion.end_date|date:"d/m/Y" }}</td>
+                <td>
+                    {% if promotion.is_current %}<span class="badge bg-success">Vigente</span>
+                    {% elif promotion.is_active %}<span class="badge bg-secondary">Fuera de fecha</span>
+                    {% else %}<span class="badge bg-secondary">Desactivada</span>{% endif %}
+                </td>
+                <td class="text-end">
+                    <a href="{% url 'inventory:promotion_update' promotion.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                    <a href="{% url 'inventory:promotion_delete' promotion.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
+                </td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="6">
+                <div class="empty-state py-4">
+                    <i class="bi bi-tag"></i>
+                    <p>No hay promociones creadas todavía.</p>
+                </div>
+            </td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

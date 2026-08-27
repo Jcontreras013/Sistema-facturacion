@@ -22,4 +22,17 @@ urlpatterns = [
     path("promociones/nueva/", views.promotion_create, name="promotion_create"),
     path("promociones/<int:pk>/editar/", views.promotion_update, name="promotion_update"),
     path("promociones/<int:pk>/eliminar/", views.promotion_delete, name="promotion_delete"),
+    path("ordenes-compra/", views.purchase_order_list, name="purchase_order_list"),
+    path("ordenes-compra/nueva/", views.purchase_order_create, name="purchase_order_create"),
+    path("ordenes-compra/<int:pk>/", views.purchase_order_detail, name="purchase_order_detail"),
+    path("ordenes-compra/<int:pk>/agregar-producto/", views.purchase_order_add_item, name="purchase_order_add_item"),
+    path(
+        "ordenes-compra/<int:pk>/quitar-producto/<int:item_pk>/",
+        views.purchase_order_remove_item,
+        name="purchase_order_remove_item",
+    ),
+    path("ordenes-compra/<int:pk>/enviar/", views.purchase_order_send, name="purchase_order_send"),
+    path("ordenes-compra/<int:pk>/recibir/", views.purchase_order_receive, name="purchase_order_receive"),
+    path("ordenes-compra/<int:pk>/cancelar/", views.purchase_order_cancel, name="purchase_order_cancel"),
+    path("ordenes-compra/<int:pk>/eliminar/", views.purchase_order_delete, name="purchase_order_delete"),
 ]
