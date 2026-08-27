@@ -95,9 +95,24 @@ class Product(models.Model):
     def has_wholesale_price(self):
         return bool(self.wholesale_price and self.wholesale_min_qty)
 
+    def active_promotion(self):
+        today = datetime.date.today()
+        query = models.Q(product=self)
+        if self.category_id:
+            query |= models.Q(category_id=self.category_id)
+        return (
+            Promotion.objects.filter(query, is_active=True, start_date__lte=today, end_date__gte=today)
+            .order_by("-discount_percent")
+            .first()
+        )
+
     def price_for_quantity(self, quantity):
         if self.has_wholesale_price and quantity >= self.wholesale_min_qty:
             return self.wholesale_price
+        promo = self.active_promotion()
+        if promo:
+            discounted = self.sale_price * (Decimal("100") - promo.discount_percent) / Decimal("100")
+            return discounted.quantize(Decimal("0.01"))
         return self.sale_price
 
     @property
@@ -165,3 +180,45 @@ class StockMovement(models.Model):
             elif self.movement_type == "adjust":
                 self.product.stock = self.quantity
             self.product.save(update_fields=["stock"])
+
+
+class Promotion(models.Model):
+    name = models.CharField("Nombre de la promoción", max_length=150)
+    product = models.ForeignKey(
+        Product, verbose_name="Producto", on_delete=models.CASCADE, null=True, blank=True, related_name="promotions"
+    )
+    category = models.ForeignKey(
+        Category, verbose_name="Categoría", on_delete=models.CASCADE, null=True, blank=True, related_name="promotions"
+    )
+    discount_percent = models.DecimalField("Descuento (%)", max_digits=5, decimal_places=2)
+    start_date = models.DateField("Fecha de inicio")
+    end_date = models.DateField("Fecha de fin")
+    is_active = models.BooleanField("Activa", default=True)
+    created_at = models.DateTimeField("Creada", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Promoción"
+        verbose_name_plural = "Promociones"
+        ordering = ["-start_date"]
+
+    def __str__(self):
+        return self.name
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if not self.product_id and not self.category_id:
+            raise ValidationError("Selecciona un producto o una categoría para la promoción.")
+        if self.product_id and self.category_id:
+            raise ValidationError("Elige solo un producto o una categoría, no ambos.")
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValidationError("La fecha de fin debe ser igual o posterior a la fecha de inicio.")
+
+    @property
+    def is_current(self):
+        today = datetime.date.today()
+        return self.is_active and self.start_date <= today <= self.end_date
+
+    @property
+    def applies_to(self):
+        return self.product.name if self.product else f"Categoría: {self.category.name}"

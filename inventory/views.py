@@ -12,7 +12,7 @@ from core.audit import log_action
 from core.models import AuditLog
 from core.permissions import admin_required
 
-from .forms import CategoryForm, ProductForm, ProviderForm, StockMovementForm
+from .forms import CategoryForm, ProductForm, PromotionForm, ProviderForm, StockMovementForm
 from .importers import (
     PRODUCT_FIELDS,
     detect_column_mapping,
@@ -23,7 +23,7 @@ from .importers import (
     parse_tax_rate,
     parse_uploaded_file,
 )
-from .models import Category, Product, Provider, StockMovement
+from .models import Category, Product, Promotion, Provider, StockMovement
 
 IMPORT_SESSION_PATH = "product_import_path"
 IMPORT_SESSION_NAME = "product_import_name"
@@ -182,6 +182,54 @@ def provider_delete(request, pk):
         messages.success(request, "Proveedor eliminado.")
         return redirect("inventory:provider_list")
     return render(request, "inventory/provider_confirm_delete.html", {"provider": provider})
+
+
+@admin_required
+def promotion_list(request):
+    promotions = Promotion.objects.select_related("product", "category").all()
+    return render(request, "inventory/promotion_list.html", {"promotions": promotions})
+
+
+@admin_required
+def promotion_create(request):
+    if request.method == "POST":
+        form = PromotionForm(request.POST)
+        if form.is_valid():
+            promotion = form.save()
+            log_action(request.user, "created", promotion)
+            messages.success(request, f"Promoción '{promotion.name}' creada correctamente.")
+            return redirect("inventory:promotion_list")
+    else:
+        form = PromotionForm()
+    return render(request, "inventory/promotion_form.html", {"form": form, "title": "Nueva promoción"})
+
+
+@admin_required
+def promotion_update(request, pk):
+    promotion = get_object_or_404(Promotion, pk=pk)
+    if request.method == "POST":
+        form = PromotionForm(request.POST, instance=promotion)
+        if form.is_valid():
+            form.save()
+            log_action(request.user, "updated", promotion)
+            messages.success(request, "Promoción actualizada.")
+            return redirect("inventory:promotion_list")
+    else:
+        form = PromotionForm(instance=promotion)
+    return render(
+        request, "inventory/promotion_form.html", {"form": form, "title": f"Editar promoción: {promotion.name}"}
+    )
+
+
+@admin_required
+def promotion_delete(request, pk):
+    promotion = get_object_or_404(Promotion, pk=pk)
+    if request.method == "POST":
+        log_action(request.user, "deleted", promotion)
+        promotion.delete()
+        messages.success(request, "Promoción eliminada.")
+        return redirect("inventory:promotion_list")
+    return render(request, "inventory/promotion_confirm_delete.html", {"promotion": promotion})
 
 
 @admin_required

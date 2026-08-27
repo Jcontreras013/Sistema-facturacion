@@ -192,23 +192,32 @@ def pos(request):
         messages.success(request, f"Venta {sale.number} registrada correctamente.")
         return redirect(_sale_redirect_url(sale))
 
-    products = Product.objects.filter(is_active=True, stock__gt=0).order_by("name")
-    products_data = [
-        {
-            "id": p.id,
-            "code": p.code,
-            "barcode": p.barcode or "",
-            "name": p.name,
-            "price": str(p.sale_price),
-            "tax_rate": str(p.tax_rate),
-            "stock": str(p.stock),
-            "unit": p.get_unit_display(),
-            "unit_code": p.unit,
-            "wholesale_price": str(p.wholesale_price) if p.wholesale_price else "",
-            "wholesale_min_qty": str(p.wholesale_min_qty) if p.wholesale_min_qty else "",
-        }
-        for p in products
-    ]
+    products = Product.objects.filter(is_active=True, stock__gt=0).select_related("category").order_by("name")
+    products_data = []
+    for p in products:
+        promo = p.active_promotion()
+        promo_price = ""
+        if promo:
+            promo_price = str(
+                (p.sale_price * (Decimal("100") - promo.discount_percent) / Decimal("100")).quantize(Decimal("0.01"))
+            )
+        products_data.append(
+            {
+                "id": p.id,
+                "code": p.code,
+                "barcode": p.barcode or "",
+                "name": p.name,
+                "price": str(p.sale_price),
+                "tax_rate": str(p.tax_rate),
+                "stock": str(p.stock),
+                "unit": p.get_unit_display(),
+                "unit_code": p.unit,
+                "wholesale_price": str(p.wholesale_price) if p.wholesale_price else "",
+                "wholesale_min_qty": str(p.wholesale_min_qty) if p.wholesale_min_qty else "",
+                "promo_price": promo_price,
+                "promo_percent": str(promo.discount_percent) if promo else "",
+            }
+        )
     clients = Client.objects.filter(is_active=True).order_by("name")
     clients_data = [
         {

@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Category, Product, Provider, StockMovement
+from .models import Category, Product, Promotion, Provider, StockMovement
 
 
 class CategoryForm(forms.ModelForm):
@@ -67,6 +67,35 @@ class ProductForm(forms.ModelForm):
 
     def clean_barcode(self):
         return self.cleaned_data.get("barcode") or None
+
+
+class PromotionForm(forms.ModelForm):
+    class Meta:
+        model = Promotion
+        fields = ["name", "product", "category", "discount_percent", "start_date", "end_date", "is_active"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ej. Fin de semana de ofertas"}),
+            "product": forms.Select(attrs={"class": "form-select"}),
+            "category": forms.Select(attrs={"class": "form-select"}),
+            "discount_percent": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0.01", "max": "100"}),
+            "start_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "end_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        product = cleaned_data.get("product")
+        category = cleaned_data.get("category")
+        if not product and not category:
+            raise forms.ValidationError("Selecciona un producto o una categoría para la promoción.")
+        if product and category:
+            raise forms.ValidationError("Elige solo un producto o una categoría, no ambos.")
+        start_date = cleaned_data.get("start_date")
+        end_date = cleaned_data.get("end_date")
+        if start_date and end_date and end_date < start_date:
+            raise forms.ValidationError("La fecha de fin debe ser igual o posterior a la fecha de inicio.")
+        return cleaned_data
 
 
 class StockMovementForm(forms.ModelForm):

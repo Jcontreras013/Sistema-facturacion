@@ -23,6 +23,11 @@
                 {% if product.has_wholesale_price %}
                 <tr><th>Precio de mayoreo</th><td>L {{ product.wholesale_price|floatformat:2 }} desde {{ product.wholesale_min_qty }} {{ product.get_unit_display }}</td></tr>
                 {% endif %}
+                {% with promo=product.active_promotion %}
+                {% if promo %}
+                <tr><th>Promoción activa</th><td><span class="badge bg-warning text-dark">{{ promo.name }}: -{{ promo.discount_percent|floatformat:0 }}%</span> hasta {{ promo.end_date|date:"d/m/Y" }}</td></tr>
+                {% endif %}
+                {% endwith %}
                 <tr><th>ISV</th><td>{{ product.tax_rate|floatformat:0 }}%</td></tr>
                 <tr><th>Margen</th><td>{{ product.profit_margin|floatformat:1 }}%</td></tr>
                 <tr><th>Existencias</th><td>{{ product.stock }} {{ product.get_unit_display }}

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Category, Product, Provider, StockMovement
+from .models import Category, Product, Promotion, Provider, StockMovement
 
 
 @admin.register(Category)
@@ -24,6 +24,13 @@ class ProductAdmin(admin.ModelAdmin):
     )
     search_fields = ("code", "barcode", "name")
     list_filter = ("category", "provider", "is_active")
+
+
+@admin.register(Promotion)
+class PromotionAdmin(admin.ModelAdmin):
+    list_display = ("name", "product", "category", "discount_percent", "start_date", "end_date", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("name",)
 
 
 @admin.register(StockMovement)

@@ -209,6 +209,9 @@ function effectivePrice(item) {
     if (item.wholesalePrice && item.wholesaleMinQty && item.quantity >= item.wholesaleMinQty) {
         return item.wholesalePrice;
     }
+    if (item.promoPrice) {
+        return item.promoPrice;
+    }
     return item.price;
 }
 
@@ -231,13 +234,17 @@ function renderCartTable() {
         const lineSubtotal = unitPrice * item.quantity;
         const isWeighted = WEIGHTED_UNITS.has(item.unitCode);
         const step = isWeighted ? '0.01' : '1';
-        const isWholesale = unitPrice !== item.price;
+        const isWholesale = item.wholesalePrice && item.wholesaleMinQty && item.quantity >= item.wholesaleMinQty;
+        const isPromo = !isWholesale && item.promoPrice;
+        let priceBadge = '';
+        if (isWholesale) priceBadge = '<span class="badge bg-info text-dark">Mayoreo</span>';
+        else if (isPromo) priceBadge = '<span class="badge bg-warning text-dark">Promoción</span>';
         const row = document.createElement('tr');
         row.dataset.cartIndex = index;
         row.innerHTML = `
             <td class="fw-bold">${item.name}</td>
             <td class="text-muted small">${item.code}</td>
-            <td class="text-end text-success">L ${unitPrice.toFixed(2)} ${isWholesale ? '<span class="badge bg-info text-dark">Mayoreo</span>' : ''}</td>
+            <td class="text-end text-success">L ${unitPrice.toFixed(2)} ${priceBadge}</td>
             <td class="text-end"><input type="number" min="0" step="${step}" inputmode="${isWeighted ? 'decimal' : 'numeric'}" value="${item.quantity}" class="form-control form-control-sm ms-auto" style="width:90px" data-id="${item.id}"> <span class="small text-muted">${item.unit}</span></td>
             <td class="text-end">L ${lineSubtotal.toFixed(2)}</td>
             <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-remove="${item.id}"><i class="bi bi-x"></i></button></td>
@@ -362,6 +369,7 @@ function addToCart(product) {
             unitCode: product.unit_code,
             wholesalePrice: product.wholesale_price ? parseFloat(product.wholesale_price) : null,
             wholesaleMinQty: product.wholesale_min_qty ? parseFloat(product.wholesale_min_qty) : null,
+            promoPrice: product.promo_price ? parseFloat(product.promo_price) : null,
             quantity: isWeighted ? Math.min(increment, parseFloat(product.stock)) : 1,
         });
     }
@@ -905,6 +913,7 @@ async function recallHeldSale(id) {
             unitCode: product.unit_code,
             wholesalePrice: product.wholesale_price ? parseFloat(product.wholesale_price) : null,
             wholesaleMinQty: product.wholesale_min_qty ? parseFloat(product.wholesale_min_qty) : null,
+            promoPrice: product.promo_price ? parseFloat(product.promo_price) : null,
             quantity: parseFloat(entry.quantity),
         };
     }).filter(Boolean);

@@ -18,4 +18,8 @@ urlpatterns = [
     path("proveedores/nuevo/", views.provider_create, name="provider_create"),
     path("proveedores/<int:pk>/editar/", views.provider_update, name="provider_update"),
     path("proveedores/<int:pk>/eliminar/", views.provider_delete, name="provider_delete"),
+    path("promociones/", views.promotion_list, name="promotion_list"),
+    path("promociones/nueva/", views.promotion_create, name="promotion_create"),
+    path("promociones/<int:pk>/editar/", views.promotion_update, name="promotion_update"),
+    path("promociones/<int:pk>/eliminar/", views.promotion_delete, name="promotion_delete"),
 ]
