@@ -16,6 +16,7 @@
     {% endif %}
     <form method="post">
         {% csrf_token %}
+        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">{{ form.code.label }}</label>
@@ -85,7 +86,7 @@
         </div>
         <div class="mt-4">
             <button type="submit" class="btn btn-primary">Guardar</button>
-            <a href="{% url 'inventory:product_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+            <a href="{{ next|default:'' }}{% if not next %}{% url 'inventory:product_list' %}{% endif %}" class="btn btn-outline-secondary">Cancelar</a>
         </div>
     </form>
 </div>

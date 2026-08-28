@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from core.audit import log_action
 from core.models import AuditLog
@@ -60,16 +61,26 @@ def product_list(request):
 
 @admin_required
 def product_create(request):
+    next_url = request.POST.get("next") or request.GET.get("next")
+    if next_url and not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        next_url = None
+
     if request.method == "POST":
         form = ProductForm(request.POST)
         if form.is_valid():
             product = form.save()
             log_action(request.user, "created", product)
             messages.success(request, f"Producto '{product.name}' creado correctamente.")
-            return redirect("inventory:product_list")
+            return redirect(next_url or "inventory:product_list")
     else:
-        form = ProductForm()
-    return render(request, "inventory/product_form.html", {"form": form, "title": "Nuevo producto"})
+        initial = {}
+        provider_id = request.GET.get("provider")
+        if provider_id:
+            initial["provider"] = provider_id
+        form = ProductForm(initial=initial)
+    return render(
+        request, "inventory/product_form.html", {"form": form, "title": "Nuevo producto", "next": next_url}
+    )
 
 
 @admin_required
