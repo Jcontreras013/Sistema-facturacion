@@ -21,18 +21,27 @@
             <label class="form-label">{{ form.email.label }}</label>
             {{ form.email }}
         </div>
+        {% if is_protected_admin %}
+        <div class="alert alert-secondary small">
+            <i class="bi bi-shield-lock-fill"></i> Esta es la cuenta del Admin (creador del sistema). Su rol y estado no
+            se manejan por grupos y nadie más puede modificarla: solo tú puedes actualizar tu correo o contraseña aquí.
+        </div>
+        {% else %}
         <div class="mb-3">
             <label class="form-label">{{ form.role.label }}</label>
             {{ form.role }}
         </div>
+        {% endif %}
         <div class="mb-3">
             <label class="form-label">{{ form.password.label }}</label>
             {{ form.password }}
         </div>
+        {% if not is_protected_admin %}
         <div class="mb-3 form-check">
             {{ form.is_active }}
             <label class="form-check-label">{{ form.is_active.label }}</label>
         </div>
+        {% endif %}
         <button type="submit" class="btn btn-primary">Guardar</button>
         <a href="{% url 'core:user_list' %}" class="btn btn-outline-secondary">Cancelar</a>
     </form>

@@ -51,8 +51,8 @@ class CompanyForm(forms.ModelForm):
 
 
 ROLE_CHOICES = [
-    (CASHIER_GROUP, "Cajero"),
-    (ADMIN_GROUP, "Administrador"),
+    (CASHIER_GROUP, "Caja"),
+    (ADMIN_GROUP, "Supervisor"),
 ]
 
 
@@ -99,12 +99,20 @@ class UserUpdateForm(forms.ModelForm):
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
+    def __init__(self, *args, lock_role=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.lock_role = lock_role
+        if lock_role:
+            del self.fields["role"]
+            del self.fields["is_active"]
+
     def save(self, commit=True):
         user = super().save(commit=False)
         if self.cleaned_data.get("password"):
             user.set_password(self.cleaned_data["password"])
         if commit:
             user.save()
-            group = Group.objects.get(name=self.cleaned_data["role"])
-            user.groups.set([group])
+            if not self.lock_role:
+                group = Group.objects.get(name=self.cleaned_data["role"])
+                user.groups.set([group])
         return user

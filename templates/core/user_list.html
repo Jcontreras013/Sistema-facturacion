@@ -22,17 +22,21 @@
                 <td>{{ u.username }}</td>
                 <td>{{ u.email|default:"—" }}</td>
                 <td>
+                    {% if u.is_superuser %}<span class="badge bg-dark"><i class="bi bi-shield-lock-fill"></i> Admin</span>{% endif %}
                     {% for g in u.groups.all %}
                         <span class="badge bg-secondary">{{ g.name }}</span>
-                    {% empty %}
-                        {% if u.is_superuser %}<span class="badge bg-dark">Superusuario</span>{% else %}—{% endif %}
                     {% endfor %}
+                    {% if not u.is_superuser and not u.groups.all %}—{% endif %}
                 </td>
                 <td>{% if u.is_active %}<span class="badge bg-success">Activo</span>{% else %}<span class="badge bg-secondary">Inactivo</span>{% endif %}</td>
                 <td class="text-end">
-                    <a href="{% url 'core:user_update' u.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
-                    {% if u.pk != request.user.pk %}
-                    <a href="{% url 'core:user_delete' u.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
+                    {% if u.is_superuser and u.pk != request.user.pk %}
+                        <span class="badge bg-light text-dark border" title="Solo el propio Admin puede modificar esta cuenta"><i class="bi bi-lock-fill"></i> Protegido</span>
+                    {% else %}
+                        <a href="{% url 'core:user_update' u.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                        {% if u.pk != request.user.pk and not u.is_superuser %}
+                        <a href="{% url 'core:user_delete' u.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
+                        {% endif %}
                     {% endif %}
                 </td>
             </tr>

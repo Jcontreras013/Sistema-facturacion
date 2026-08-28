@@ -15,8 +15,11 @@ Aplicación web construida con Django para administrar un mini market: punto de 
 - **Órdenes de compra a proveedores (solo administradores):** crea una orden en borrador, agrega los productos con cantidad y costo, márcala como enviada, y registra la recepción de mercancía (total o parcial). Cada recepción genera automáticamente el movimiento de inventario correspondiente y suma al stock — no hay que capturar el ingreso de mercancía dos veces. Si el producto que llegó todavía no existe en el catálogo (proveedor nuevo, artículo nuevo), hay dos opciones: activar "Es un producto nuevo (solo el nombre)" en la misma fila para crearlo al vuelo con solo escribir el nombre (código automático, ese costo como precio de compra, y el resto con valores por defecto — ideal cuando el proveedor solo trae un catálogo con nombres y no hay tiempo de llenar todo), o usar el enlace "¿Necesitas llenar todos los datos del producto...?" para ir al formulario completo cuando sí tienes el código de barras y demás datos a la mano. Los productos creados rápido quedan marcados con la etiqueta "Precio pendiente" en el listado, y hay un filtro "Sin precio de venta" para encontrarlos y terminarlos de configurar con calma.
 - **Conteo físico de inventario (solo administradores):** al iniciar un conteo puedes elegir una o varias categorías (por ejemplo, solo "Bebidas" o solo "Abarrotes") para no tener que cargar y contar todo el inventario cada semana o cada mes; si no eliges ninguna, se incluyen todos los productos activos. El sistema toma una foto del stock actual de los productos incluidos. Puedes ir ingresando la cantidad real que encuentras en bodega y guardar tu progreso las veces que quieras; la diferencia contra el sistema se muestra al instante. También puedes descargar una **hoja de conteo imprimible** (botón "Hoja para conteo manual (PDF)") con el nombre y el stock de sistema de cada producto y un espacio en blanco para que el personal la llene a mano en bodega; desde el navegador puedes imprimirla o guardarla como PDF, y después solo se captura lo contado en el sistema. Al cerrar el conteo, el inventario se ajusta automáticamente a lo contado (con el movimiento de inventario correspondiente) y el conteo queda bloqueado para consulta.
 - **Ventas:** historial con filtros por fecha y cliente, detalle de factura imprimible, anulación de ventas (solo administradores).
-- **Roles:** Administrador (todo) y Cajero (POS, ventas, clientes, consulta de productos) — los reportes, configuración del negocio, categorías, proveedores y edición de productos son solo para administradores.
-- **Gestión de usuarios (solo administradores):** crear, editar rol/contraseña y eliminar usuarios desde el panel (Admin → Usuarios).
+- **Roles y jerarquía:**
+  - **Admin (creador del sistema):** es el superusuario, la cuenta con la que se desplegó el sistema (o cualquier otra creada como superusuario por línea de comandos). Tiene acceso total y **ninguna otra cuenta, ni siquiera otro Supervisor, puede editarla, desactivarla ni eliminarla** — en el listado de usuarios aparece marcada como "Admin" y "Protegido" para todos menos para ella misma. Ni siquiera el propio Admin puede eliminarse ni desactivarse desde el panel, como salvaguarda para no quedar fuera del sistema por accidente.
+  - **Supervisor** (jefe, administrador, encargado): mismo nivel de permisos que antes tenía "Administrador" — reportes, configuración del negocio, categorías, proveedores, productos, compras, conteos, gestión de usuarios (excepto la cuenta del Admin), etc.
+  - **Caja** (personal básico, antes "Cajero"): POS, ventas, clientes, consulta de productos. Sin acceso a reportes, configuración ni gestión de usuarios.
+- **Gestión de usuarios (Admin y Supervisor):** crear, editar rol/contraseña y eliminar usuarios desde el panel (Admin → Usuarios). La cuenta del Admin del sistema no aparece editable ni eliminable para nadie más.
 - **Eliminación de registros (solo administradores):** además del CRUD normal de productos/categorías/proveedores/clientes, el admin puede eliminar ventas/facturas, notas de crédito y sesiones de caja, con las restauraciones de stock correspondientes (eliminar una venta completada restituye el stock; eliminar una nota de crédito revierte la devolución). No se puede eliminar una venta que ya tiene notas de crédito asociadas sin borrar esas notas primero.
 - **Bitácora de auditoría (solo administradores):** registro de quién creó, modificó o eliminó cada producto, cliente, venta, nota de crédito, sesión de caja o usuario, con fecha y hora (Admin → Bitácora de auditoría).
 - **Reportes (solo administradores):** ventas por período, productos más vendidos, ganancias, stock bajo, productos por vencer, flujo de caja, cuentas por cobrar, e ISV por tasa (15%/18%) neto de notas de crédito del período — pensado como insumo directo para la declaración mensual de ISV ante el SAR (no incluye crédito fiscal de compras a proveedores, ya que el sistema no lleva ese detalle). Todos los reportes se pueden descargar como archivo Excel (.xlsx) con el botón "Descargar", respetando el rango de fechas filtrado.
@@ -37,8 +40,8 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 python manage.py migrate
-python manage.py seed_groups        # crea los grupos "Administrador" y "Cajero"
-python manage.py createsuperuser    # tu usuario administrador
+python manage.py seed_groups        # crea los grupos "Supervisor" y "Caja"
+python manage.py createsuperuser    # tu usuario Admin (creador del sistema, protegido)
 python manage.py seed_demo          # datos de ejemplo opcionales (empresa, categorías, productos, clientes)
 
 python manage.py runserver
@@ -46,13 +49,13 @@ python manage.py runserver
 
 Luego visita `http://localhost:8000/`, inicia sesión con el usuario creado y entra a **Admin → Configuración del negocio** para poner el RTN, CAI y rango de facturas reales de tu comercio.
 
-Para crear un usuario cajero (sin acceso a reportes/configuración):
+Para crear un usuario de Caja (sin acceso a reportes/configuración):
 
 ```bash
 python manage.py shell -c "
 from django.contrib.auth.models import User, Group
 u = User.objects.create_user('cajero1', password='una-contraseña-segura')
-u.groups.add(Group.objects.get(name='Cajero'))
+u.groups.add(Group.objects.get(name='Caja'))
 "
 ```
 

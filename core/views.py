@@ -14,7 +14,7 @@ from sales.models import CashSession, Sale
 from .audit import log_action
 from .forms import CompanyForm, UserCreateForm, UserUpdateForm
 from .models import AuditLog, Company
-from .permissions import admin_required, is_admin
+from .permissions import ADMIN_GROUP, CASHIER_GROUP, admin_required, is_admin, is_protected_admin
 
 
 def service_worker(request):
@@ -96,31 +96,41 @@ def user_create(request):
 @admin_required
 def user_update(request, pk):
     user = get_object_or_404(User, pk=pk)
-    current_role = "Administrador" if is_admin(user) else "Cajero"
+    if is_protected_admin(user) and user.pk != request.user.pk:
+        messages.error(request, "La cuenta del Admin (creador del sistema) no puede ser modificada por otro usuario.")
+        return redirect("core:user_list")
+    lock_role = is_protected_admin(user)
+    current_role = ADMIN_GROUP if is_admin(user) else CASHIER_GROUP
     if request.method == "POST":
-        form = UserUpdateForm(request.POST, instance=user)
+        form = UserUpdateForm(request.POST, instance=user, lock_role=lock_role)
         if form.is_valid():
             form.save()
-            log_action(request.user, "updated", user, extra=f"Rol: {form.cleaned_data['role']}")
+            extra = "Admin del sistema" if lock_role else f"Rol: {form.cleaned_data['role']}"
+            log_action(request.user, "updated", user, extra=extra)
             messages.success(request, f"Usuario '{user.username}' actualizado.")
             return redirect("core:user_list")
     else:
-        form = UserUpdateForm(instance=user, initial={"role": "Administrador" if is_admin(user) else "Cajero"})
+        form = UserUpdateForm(instance=user, initial={"role": current_role}, lock_role=lock_role)
     return render(
-        request, "core/user_form.html", {"form": form, "title": f"Editar usuario: {user.username}"}
+        request,
+        "core/user_form.html",
+        {"form": form, "title": f"Editar usuario: {user.username}", "is_protected_admin": lock_role},
     )
 
 
 @admin_required
 def user_delete(request, pk):
     user = get_object_or_404(User, pk=pk)
+    if is_protected_admin(user):
+        messages.error(request, "La cuenta del Admin (creador del sistema) no se puede eliminar.")
+        return redirect("core:user_list")
     if request.method == "POST":
         if user.pk == request.user.pk:
             messages.error(request, "No puedes eliminar tu propio usuario.")
             return redirect("core:user_list")
         remaining_admins = (
             User.objects.exclude(pk=user.pk)
-            .filter(Q(is_superuser=True) | Q(groups__name="Administrador"))
+            .filter(Q(is_superuser=True) | Q(groups__name=ADMIN_GROUP))
             .distinct()
             .count()
         )
