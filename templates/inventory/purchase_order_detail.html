@@ -126,15 +126,29 @@
     const productSelect = document.getElementById('productSelect');
     const newProductName = document.getElementById('newProductName');
     const hint = document.getElementById('newProductHint');
+    const storageKey = 'po_new_product_toggle_{{ order.pk }}';
 
-    toggle.addEventListener('change', () => {
-        const isNew = toggle.checked;
+    function applyState(isNew) {
         existingField.style.display = isNew ? 'none' : '';
         newField.style.display = isNew ? '' : 'none';
         hint.style.display = isNew ? 'block' : 'none';
         productSelect.disabled = isNew;
         newProductName.disabled = !isNew;
+    }
+
+    toggle.addEventListener('change', () => {
+        applyState(toggle.checked);
+        try { localStorage.setItem(storageKey, toggle.checked ? '1' : '0'); } catch (e) { /* almacenamiento no disponible */ }
     });
+
+    // Recordar el estado del interruptor entre recargas (después de agregar cada producto).
+    let remembered = false;
+    try { remembered = localStorage.getItem(storageKey) === '1'; } catch (e) { /* almacenamiento no disponible */ }
+    if (remembered) {
+        toggle.checked = true;
+        applyState(true);
+        newProductName.focus();
+    }
 })();
 </script>
 {% endif %}
