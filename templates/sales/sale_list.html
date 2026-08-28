@@ -38,7 +38,10 @@
         <tbody>
         {% for sale in sales %}
             <tr>
-                <td><a href="{% url 'sales:sale_detail' sale.pk %}">{{ sale.number }}</a></td>
+                <td>
+                    <a href="{% url 'sales:sale_detail' sale.pk %}">{{ sale.number }}</a>
+                    {% if sale.is_contingency %}<span class="badge bg-warning text-dark" title="Emitida en contingencia (sin internet)">Contingencia</span>{% endif %}
+                </td>
                 <td>{{ sale.created_at|date:"d/m/Y H:i" }}</td>
                 <td>{{ sale.client.name|default:"Consumidor final" }}</td>
                 <td>{{ sale.user|default:"—" }}</td>

@@ -199,6 +199,75 @@
 {% block extra_js %}
 <script>
 const PRODUCTS = {{ products_json|safe }};
+const CONTINGENCY_CONFIG = {{ contingency_json|safe }};
+const CASHIER_NAME = "{{ user.username|escapejs }}";
+if (CONTINGENCY_CONFIG) {
+    MMOffline.syncContingencyCounterFromServer(CONTINGENCY_CONFIG.next);
+}
+
+function formatContingencyNumber(correlative) {
+    if (CONTINGENCY_CONFIG.regime !== 'cai') {
+        return 'CFE-' + String(correlative).padStart(8, '0');
+    }
+    return `${CONTINGENCY_CONFIG.establishment_code}-${CONTINGENCY_CONFIG.emission_point_code}-` +
+        `${CONTINGENCY_CONFIG.document_type_code}-${String(correlative).padStart(8, '0')}`;
+}
+
+function printContingencyReceipt(data) {
+    const isNarrow = CONTINGENCY_CONFIG.receipt_format === 'thermal_58';
+    const width = isNarrow ? '220px' : '300px';
+    let subtotal = 0;
+    let tax = 0;
+    const rows = data.cart.map(item => {
+        const lineSubtotal = item.unitPrice * item.quantity;
+        subtotal += lineSubtotal;
+        tax += lineSubtotal * (item.taxRate / 100);
+        return `<div class="rline"><span>${item.quantity} ${item.name}</span><span>L ${lineSubtotal.toFixed(2)}</span></div>`;
+    }).join('');
+    const grossTotal = subtotal + tax;
+    const discountAmount = grossTotal * (data.discountPercent / 100);
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('es-HN') + ' ' + now.toLocaleTimeString('es-HN');
+
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Comprobante de contingencia</title>
+<style>
+body { font-family: 'Courier New', Courier, monospace; width: ${width}; margin: 0 auto; padding: 8px; font-size: ${isNarrow ? '10px' : '12px'}; }
+h3 { text-align: center; margin: 4px 0; font-size: ${isNarrow ? '13px' : '15px'}; }
+.warn { border: 2px solid #000; padding: 4px; text-align: center; font-weight: bold; margin: 6px 0; }
+.rline { display: flex; justify-content: space-between; gap: 6px; }
+hr { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+.tot { font-weight: bold; }
+</style></head><body>
+<h3>${data.businessName || CONTINGENCY_CONFIG.business_name}</h3>
+${CONTINGENCY_CONFIG.rtn ? `<div>RTN: ${CONTINGENCY_CONFIG.rtn}</div>` : ''}
+${CONTINGENCY_CONFIG.address ? `<div>${CONTINGENCY_CONFIG.address}</div>` : ''}
+<div class="warn">COMPROBANTE DE CONTINGENCIA<br>SIN INTERNET</div>
+<div>Factura: ${data.number}</div>
+<div>Fecha: ${dateStr}</div>
+<div>Cajero: ${CASHIER_NAME}</div>
+<div>Cliente: ${data.clientName}</div>
+<div>Pago: ${data.paymentLabel}</div>
+<hr>
+${rows}
+<hr>
+<div class="rline"><span>Subtotal</span><span>L ${subtotal.toFixed(2)}</span></div>
+<div class="rline"><span>Impuesto</span><span>L ${tax.toFixed(2)}</span></div>
+${data.discountPercent > 0 ? `<div class="rline"><span>Descuento (${data.discountPercent}%)</span><span>-L ${discountAmount.toFixed(2)}</span></div>` : ''}
+<div class="rline tot"><span>Total</span><span>L ${data.total.toFixed(2)}</span></div>
+<hr>
+<div style="text-align:center;">Emitida sin internet. Se registra en el<br>sistema al recuperar la conexión.</div>
+</body></html>`;
+
+    const printWindow = window.open('', '_blank', 'width=400,height=650');
+    if (!printWindow) return;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.onload = () => {
+        printWindow.focus();
+        printWindow.print();
+    };
+}
+
 const WEIGHTED_UNITS = new Set(['lb', 'kg', 'litro']);
 let cart = [];
 let searchMatches = [];
@@ -762,13 +831,45 @@ document.getElementById('saleForm').addEventListener('submit', async (e) => {
         showPosMessage((result.data && result.data.error) || 'No se pudo completar la venta.', 'danger');
         checkoutBtn.disabled = false;
     } catch (err) {
+        // Instantánea del carrito y totales antes de vaciarlos, para poder imprimir el comprobante.
+        const receiptCart = cart.map(i => ({ name: i.name, quantity: i.quantity, unit: i.unit, unitPrice: effectivePrice(i), taxRate: i.taxRate }));
+        const receiptClientName = clientSearch.value || 'Consumidor final';
+        const receiptPaymentLabel = paymentMethodSelect.selectedOptions[0] ? paymentMethodSelect.selectedOptions[0].textContent : '';
+        const receiptDiscountPercent = appliedDiscountPercent;
+        const receiptTotal = cartTotalAmount;
+
+        let contingencyNumber = null;
+        if (CONTINGENCY_CONFIG) {
+            contingencyNumber = await MMOffline.reserveContingencyNumber(CONTINGENCY_CONFIG.range_end);
+        }
+        if (contingencyNumber) {
+            payload.contingency_correlative = contingencyNumber;
+        }
+
         await MMOffline.queueSale(payload);
         await MMOffline.updateBadge();
         resetSaleForm();
-        showPosMessage(
-            'Sin conexión: la venta se guardó en este dispositivo y se enviará automáticamente cuando vuelva el internet. Aún no tiene número de factura oficial.',
-            'warning'
-        );
+
+        if (contingencyNumber) {
+            const formattedNumber = formatContingencyNumber(contingencyNumber);
+            printContingencyReceipt({
+                number: formattedNumber,
+                clientName: receiptClientName,
+                paymentLabel: receiptPaymentLabel,
+                cart: receiptCart,
+                discountPercent: receiptDiscountPercent,
+                total: receiptTotal,
+            });
+            showPosMessage(
+                `Sin conexión: venta facturada en contingencia con el número ${formattedNumber}. Se sincronizará sola cuando vuelva el internet.`,
+                'warning'
+            );
+        } else {
+            showPosMessage(
+                'Sin conexión: la venta se guardó en este dispositivo y se enviará automáticamente cuando vuelva el internet. Aún no tiene número de factura oficial.',
+                'warning'
+            );
+        }
     }
 });
 

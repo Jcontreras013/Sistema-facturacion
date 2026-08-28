@@ -34,6 +34,13 @@ class Company(models.Model):
     next_correlative = models.PositiveIntegerField("Próximo correlativo a emitir", default=1)
     emission_limit_date = models.DateField("Fecha límite de emisión", null=True, blank=True)
 
+    # Rango de contingencia: bloque de correlativos reservado exclusivamente para facturar
+    # sin internet (usa el mismo establecimiento/punto/tipo de documento de arriba).
+    contingency_enabled = models.BooleanField("Usar rango de contingencia sin internet", default=False)
+    contingency_range_start = models.PositiveIntegerField("Correlativo inicial de contingencia", null=True, blank=True)
+    contingency_range_end = models.PositiveIntegerField("Correlativo final de contingencia", null=True, blank=True)
+    contingency_next_correlative = models.PositiveIntegerField("Próximo correlativo de contingencia", null=True, blank=True)
+
     default_isv_rate = models.DecimalField("Tasa de ISV por defecto (%)", max_digits=5, decimal_places=2, default=Decimal("15.00"))
 
     RECEIPT_THERMAL_80 = "thermal_80"
@@ -74,6 +81,20 @@ class Company(models.Model):
     def range_remaining(self):
         return max(self.range_end - self.next_correlative + 1, 0)
 
+    @property
+    def contingency_remaining(self):
+        if not (self.contingency_enabled and self.contingency_range_end and self.contingency_next_correlative):
+            return 0
+        return max(self.contingency_range_end - self.contingency_next_correlative + 1, 0)
+
+    def format_invoice_number(self, correlative):
+        if self.invoice_regime == self.REGIME_CAI:
+            return (
+                f"{self.establishment_code}-{self.emission_point_code}-"
+                f"{self.document_type_code}-{correlative:08d}"
+            )
+        return f"CFE-{correlative:08d}"
+
     def reserve_next_invoice_number(self):
         """Devuelve el número formateado para la próxima factura y avanza el correlativo. No guarda el modelo."""
         if self.invoice_regime == self.REGIME_CAI:
@@ -89,16 +110,52 @@ class Company(models.Model):
                     "La fecha límite de emisión del CAI actual ya pasó. "
                     "Actualiza la configuración del negocio con un nuevo CAI antes de facturar."
                 )
-            number = (
-                f"{self.establishment_code}-{self.emission_point_code}-"
-                f"{self.document_type_code}-{self.next_correlative:08d}"
-            )
-        else:
-            number = f"CFE-{self.next_correlative:08d}"
 
+        number = self.format_invoice_number(self.next_correlative)
         self.next_correlative += 1
         self.save(update_fields=["next_correlative"])
         return number
+
+    def contingency_config(self):
+        """Datos públicos del rango de contingencia para exponer al POS (para facturar sin internet)."""
+        if not (
+            self.contingency_enabled
+            and self.contingency_range_start
+            and self.contingency_range_end
+            and self.contingency_next_correlative
+        ):
+            return None
+        return {
+            "next": self.contingency_next_correlative,
+            "range_end": self.contingency_range_end,
+            "establishment_code": self.establishment_code,
+            "emission_point_code": self.emission_point_code,
+            "document_type_code": self.document_type_code,
+            "regime": self.invoice_regime,
+            "business_name": self.trade_name or self.business_name or "Mini Market",
+            "rtn": self.rtn,
+            "address": self.address,
+            "receipt_format": self.receipt_format,
+        }
+
+    def reserve_contingency_correlative(self, correlative):
+        """Valida un correlativo de contingencia asignado por el cliente sin conexión y devuelve el número
+        de factura formateado. Lanza ValidationError si la contingencia no está activa, el número está fuera
+        de rango o ya fue usado."""
+        if not self.contingency_enabled:
+            raise ValidationError("La facturación en contingencia sin internet no está activada en este negocio.")
+        if not (self.contingency_range_start and self.contingency_range_end):
+            raise ValidationError("El rango de contingencia no está configurado.")
+        if not (self.contingency_range_start <= correlative <= self.contingency_range_end):
+            raise ValidationError("El número de contingencia está fuera del rango autorizado.")
+        return self.format_invoice_number(correlative)
+
+    def register_contingency_use(self, correlative):
+        """Avanza el próximo correlativo de contingencia si el usado fue mayor o igual al esperado. No falla si
+        llegan sincronizaciones fuera de orden."""
+        if self.contingency_next_correlative is not None and correlative >= self.contingency_next_correlative:
+            self.contingency_next_correlative = correlative + 1
+            self.save(update_fields=["contingency_next_correlative"])
 
 
 class AuditLog(models.Model):

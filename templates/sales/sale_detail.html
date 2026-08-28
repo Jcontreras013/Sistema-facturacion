@@ -18,6 +18,7 @@
                 {% else %}
                     <span class="badge bg-danger">Anulada</span>
                 {% endif %}
+                {% if sale.is_contingency %}<span class="badge bg-warning text-dark">Emitida en contingencia (sin internet)</span>{% endif %}
             </div>
         </div>
     </div>

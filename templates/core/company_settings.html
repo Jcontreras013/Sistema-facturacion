@@ -103,6 +103,41 @@
         </div>
 
         <hr>
+        <h6>Facturación en contingencia (sin internet)</h6>
+        <p class="text-muted small">
+            Reserva un bloque de correlativos aparte del rango normal, exclusivo para cuando se cae el internet:
+            el punto de venta le asigna un número de este bloque a cada venta offline en el momento y la imprime
+            de una vez con su número de factura real, en lugar de esperar a que vuelva la conexión.
+            <strong>Solo funciona bien con una caja/dispositivo a la vez</strong> — si dos cajas quedan sin
+            internet al mismo tiempo y ambas usan contingencia, podrían chocar números entre sí.
+        </p>
+        <div class="row g-3 mb-3">
+            <div class="col-12">
+                <div class="form-check">
+                    {{ form.contingency_enabled }}
+                    <label class="form-check-label">{{ form.contingency_enabled.label }}</label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.contingency_range_start.label }}</label>
+                {{ form.contingency_range_start }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.contingency_range_end.label }}</label>
+                {{ form.contingency_range_end }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.contingency_next_correlative.label }}</label>
+                {{ form.contingency_next_correlative }}
+            </div>
+        </div>
+        {% if company.contingency_enabled %}
+        <div class="mb-3">
+            <span class="badge bg-info">Correlativos de contingencia restantes: {{ company.contingency_remaining }}</span>
+        </div>
+        {% endif %}
+
+        <hr>
         <h6>Impresión de tickets</h6>
         <div class="row g-3 mb-3">
             <div class="col-md-6">

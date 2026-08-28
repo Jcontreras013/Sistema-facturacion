@@ -4,6 +4,7 @@ from decimal import Decimal, InvalidOperation
 from django.contrib import messages
 from django.contrib.auth import authenticate
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.signing import BadSignature, SignatureExpired, dumps, loads
 from django.db import transaction
 from django.http import Http404, JsonResponse
@@ -47,6 +48,7 @@ def _create_sale(
     user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes,
     mixed_cash_amount=None, mixed_other_amount=None,
     discount_percent=None, discount_token=None,
+    contingency_correlative=None,
 ):
     """Crea una venta a partir de un carrito ya validado. Lanza ValueError/InvalidOperation/KeyError/Http404 en caso de error."""
     with transaction.atomic():
@@ -88,7 +90,7 @@ def _create_sale(
                 )
             credit_available = credit_client.credit_available()
 
-        sale = Sale.objects.create(
+        sale_kwargs = dict(
             client_id=client_id,
             user=user,
             payment_method=payment_method,
@@ -97,6 +99,20 @@ def _create_sale(
             discount_percent=validated_discount_percent,
             discount_authorized_by_id=discount_authorized_by_id,
         )
+        contingency_company = None
+        if contingency_correlative is not None:
+            contingency_company = Company.load()
+            try:
+                sale_kwargs["number"] = contingency_company.reserve_contingency_correlative(contingency_correlative)
+            except DjangoValidationError as exc:
+                raise ValueError("; ".join(exc.messages))
+            if Sale.objects.filter(number=sale_kwargs["number"]).exists():
+                raise ValueError(f"La factura de contingencia {sale_kwargs['number']} ya fue registrada (posible duplicado).")
+            sale_kwargs["is_contingency"] = True
+
+        sale = Sale.objects.create(**sale_kwargs)
+        if contingency_company is not None:
+            contingency_company.register_contingency_use(contingency_correlative)
         for entry in cart:
             product = get_object_or_404(Product, pk=entry["id"])
             quantity = Decimal(str(entry["quantity"]))
@@ -237,6 +253,7 @@ def pos(request):
             "clients_json": json.dumps(clients_data),
             "payment_methods": Sale.PAYMENT_METHODS,
             "open_session": open_session,
+            "contingency_json": json.dumps(Company.load().contingency_config()),
         },
     )
 
@@ -268,9 +285,18 @@ def pos_checkout_api(request):
     mixed_other_amount = payload.get("mixed_other_amount")
     discount_percent = payload.get("discount_percent")
     discount_token = payload.get("discount_token")
+    contingency_correlative = payload.get("contingency_correlative")
 
     if not cart:
         return JsonResponse({"ok": False, "error": "Agrega al menos un producto a la venta."}, status=400)
+
+    if contingency_correlative not in (None, ""):
+        try:
+            contingency_correlative = int(contingency_correlative)
+        except (TypeError, ValueError):
+            return JsonResponse({"ok": False, "error": "Número de contingencia inválido."}, status=400)
+    else:
+        contingency_correlative = None
 
     try:
         sale = _create_sale(
@@ -278,6 +304,7 @@ def pos_checkout_api(request):
             mixed_cash_amount=Decimal(str(mixed_cash_amount)) if mixed_cash_amount not in (None, "") else None,
             mixed_other_amount=Decimal(str(mixed_other_amount)) if mixed_other_amount not in (None, "") else None,
             discount_percent=discount_percent, discount_token=discount_token,
+            contingency_correlative=contingency_correlative,
         )
     except (ValueError, InvalidOperation, KeyError, Http404) as exc:
         return JsonResponse({"ok": False, "error": str(exc) or "No se pudo completar la venta."}, status=400)

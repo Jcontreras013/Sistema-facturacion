@@ -74,6 +74,10 @@ class Sale(models.Model):
     ]
 
     number = models.CharField("No. de factura", max_length=20, unique=True, blank=True)
+    is_contingency = models.BooleanField(
+        "Emitida en contingencia (sin internet)", default=False,
+        help_text="La venta se facturó sin conexión usando el rango de contingencia y se sincronizó después.",
+    )
     client = models.ForeignKey(
         Client, verbose_name="Cliente", on_delete=models.SET_NULL, null=True, blank=True, related_name="sales"
     )

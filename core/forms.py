@@ -24,6 +24,10 @@ class CompanyForm(forms.ModelForm):
             "range_end",
             "next_correlative",
             "emission_limit_date",
+            "contingency_enabled",
+            "contingency_range_start",
+            "contingency_range_end",
+            "contingency_next_correlative",
             "default_isv_rate",
             "receipt_format",
             "auto_print_on_sale",
@@ -44,10 +48,32 @@ class CompanyForm(forms.ModelForm):
             "range_end": forms.NumberInput(attrs={"class": "form-control"}),
             "next_correlative": forms.NumberInput(attrs={"class": "form-control"}),
             "emission_limit_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "contingency_enabled": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "contingency_range_start": forms.NumberInput(attrs={"class": "form-control"}),
+            "contingency_range_end": forms.NumberInput(attrs={"class": "form-control"}),
+            "contingency_next_correlative": forms.NumberInput(attrs={"class": "form-control"}),
             "default_isv_rate": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
             "receipt_format": forms.Select(attrs={"class": "form-select"}),
             "auto_print_on_sale": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get("contingency_enabled"):
+            start = cleaned_data.get("contingency_range_start")
+            end = cleaned_data.get("contingency_range_end")
+            next_c = cleaned_data.get("contingency_next_correlative")
+            if not (start and end):
+                raise forms.ValidationError(
+                    "Para activar la contingencia sin internet, define el correlativo inicial y final del rango reservado."
+                )
+            if start > end:
+                raise forms.ValidationError("El correlativo inicial de contingencia debe ser menor o igual al final.")
+            if not next_c:
+                cleaned_data["contingency_next_correlative"] = start
+            elif not (start <= next_c <= end + 1):
+                raise forms.ValidationError("El próximo correlativo de contingencia debe estar dentro del rango.")
+        return cleaned_data
 
 
 ROLE_CHOICES = [

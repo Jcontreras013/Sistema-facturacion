@@ -2,8 +2,10 @@
     "use strict";
 
     const DB_NAME = "mini-market-offline";
-    const DB_VERSION = 1;
+    const DB_VERSION = 2;
     const STORE_NAME = "pending_sales";
+    const CONTINGENCY_STORE_NAME = "contingency_counter";
+    const CONTINGENCY_KEY = "counter";
     const CHECKOUT_URL = "/ventas/pos/api/checkout/";
 
     if ("serviceWorker" in navigator) {
@@ -27,10 +29,56 @@
                 if (!db.objectStoreNames.contains(STORE_NAME)) {
                     db.createObjectStore(STORE_NAME, { keyPath: "localId", autoIncrement: true });
                 }
+                if (!db.objectStoreNames.contains(CONTINGENCY_STORE_NAME)) {
+                    db.createObjectStore(CONTINGENCY_STORE_NAME, { keyPath: "key" });
+                }
             };
             request.onsuccess = () => resolve(request.result);
             request.onerror = () => reject(request.error);
         });
+    }
+
+    // ---- Contador local de contingencia (numeración de facturas sin internet) ----
+    // Se guarda en este dispositivo el próximo correlativo a usar. Solo avanza hacia adelante:
+    // nunca retrocede, aunque el valor del servidor sea menor (para nunca repetir un número ya
+    // asignado localmente, incluso si la página se recarga estando todavía sin conexión).
+
+    async function getContingencyState() {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(CONTINGENCY_STORE_NAME, "readonly");
+            const store = tx.objectStore(CONTINGENCY_STORE_NAME);
+            const req = store.get(CONTINGENCY_KEY);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function setContingencyState(next) {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(CONTINGENCY_STORE_NAME, "readwrite");
+            const store = tx.objectStore(CONTINGENCY_STORE_NAME);
+            const req = store.put({ key: CONTINGENCY_KEY, next });
+            req.onsuccess = () => resolve();
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function syncContingencyCounterFromServer(serverNext) {
+        if (!serverNext) return;
+        const state = await getContingencyState();
+        if (!state || serverNext > state.next) {
+            await setContingencyState(serverNext);
+        }
+    }
+
+    async function reserveContingencyNumber(rangeEnd) {
+        const state = await getContingencyState();
+        const next = state ? state.next : null;
+        if (!next || (rangeEnd && next > rangeEnd)) return null;
+        await setContingencyState(next + 1);
+        return next;
     }
 
     async function queueSale(payload) {
@@ -185,5 +233,7 @@
         syncPendingSales,
         updateBadge,
         getCookie,
+        syncContingencyCounterFromServer,
+        reserveContingencyNumber,
     };
 })();
