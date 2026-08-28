@@ -15,18 +15,21 @@
 </div>
 <div class="card">
     <table class="table table-hover mb-0">
-        <thead><tr><th>No.</th><th>Estado</th><th>Iniciado por</th><th>Fecha</th><th></th></tr></thead>
+        <thead><tr><th>No.</th><th>Estado</th><th>Categorías</th><th>Iniciado por</th><th>Fecha</th><th></th></tr></thead>
         <tbody>
         {% for count in counts %}
             <tr>
                 <td>#{{ count.pk }}</td>
                 <td>{% if count.status == "abierto" %}<span class="badge bg-warning text-dark">Abierto</span>{% else %}<span class="badge bg-success">Cerrado</span>{% endif %}</td>
+                <td>
+                    {% for category in count.categories.all %}<span class="badge bg-secondary">{{ category.name }}</span>{% empty %}<span class="text-muted">Todas</span>{% endfor %}
+                </td>
                 <td>{{ count.created_by|default:"—" }}</td>
                 <td>{{ count.created_at|date:"d/m/Y H:i" }}</td>
                 <td class="text-end"><a href="{% url 'inventory:inventory_count_detail' count.pk %}" class="btn btn-sm btn-outline-secondary">Ver</a></td>
             </tr>
         {% empty %}
-            <tr><td colspan="5">
+            <tr><td colspan="6">
                 <div class="empty-state py-4">
                     <i class="bi bi-clipboard-check"></i>
                     <p>No se ha hecho ningún conteo físico todavía.</p>

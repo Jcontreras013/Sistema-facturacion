@@ -39,6 +39,7 @@ urlpatterns = [
     path("conteos/", views.inventory_count_list, name="inventory_count_list"),
     path("conteos/nuevo/", views.inventory_count_create, name="inventory_count_create"),
     path("conteos/<int:pk>/", views.inventory_count_detail, name="inventory_count_detail"),
+    path("conteos/<int:pk>/hoja/", views.inventory_count_print, name="inventory_count_print"),
     path("conteos/<int:pk>/guardar/", views.inventory_count_save, name="inventory_count_save"),
     path("conteos/<int:pk>/cerrar/", views.inventory_count_close, name="inventory_count_close"),
     path("conteos/<int:pk>/eliminar/", views.inventory_count_delete, name="inventory_count_delete"),

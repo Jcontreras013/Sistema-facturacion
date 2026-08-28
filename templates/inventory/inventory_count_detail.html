@@ -9,10 +9,12 @@
             <p class="page-header-subtitle">
                 {% if count.status == "abierto" %}<span class="badge bg-warning text-dark">Abierto</span>{% else %}<span class="badge bg-success">Cerrado</span>{% endif %}
                 {% if count.notes %} — {{ count.notes }}{% endif %}
+                {% for category in count.categories.all %}<span class="badge bg-secondary ms-1">{{ category.name }}</span>{% endfor %}
             </p>
         </div>
     </div>
     <div class="page-header-actions">
+        <a href="{% url 'inventory:inventory_count_print' count.pk %}" target="_blank" class="btn btn-outline-primary"><i class="bi bi-printer"></i> Hoja para conteo manual (PDF)</a>
         {% if count.status == "abierto" %}
         <form method="post" action="{% url 'inventory:inventory_count_close' count.pk %}" class="d-inline" onsubmit="return confirm('¿Cerrar el conteo y ajustar el inventario según lo contado? Esta acción no se puede deshacer.');">
             {% csrf_token %}
@@ -25,7 +27,7 @@
 </div>
 
 {% if count.status == "abierto" %}
-<p class="text-muted small">Ingresa la cantidad real que encontraste en bodega para cada producto. Puedes guardar y seguir editando; los ajustes de inventario solo se aplican cuando cierras el conteo.</p>
+<p class="text-muted small">Ingresa la cantidad real que encontraste en bodega para cada producto, o descarga la hoja en PDF para que el personal la llene a mano y luego la captures aquí. Puedes guardar y seguir editando; los ajustes de inventario solo se aplican cuando cierras el conteo.</p>
 <form method="post" action="{% url 'inventory:inventory_count_save' count.pk %}">
     {% csrf_token %}
 {% endif %}

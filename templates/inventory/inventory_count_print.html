@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Hoja de conteo #{{ count.pk }}{% endblock %}
+{% block content %}
+<div class="no-print mb-3">
+    <button onclick="window.print()" class="btn btn-primary"><i class="bi bi-printer"></i> Imprimir / Guardar como PDF</button>
+    <a href="{% url 'inventory:inventory_count_detail' count.pk %}" class="btn btn-outline-secondary">Volver al conteo</a>
+    <p class="text-muted small mt-2">Para guardarla como PDF, en el cuadro de impresión elige "Guardar como PDF" en vez de una impresora.</p>
+</div>
+
+<h3 class="mb-1">Hoja de conteo físico #{{ count.pk }}</h3>
+<p class="text-muted mb-1">
+    {% if count.notes %}{{ count.notes }} — {% endif %}
+    {% for category in count.categories.all %}{{ category.name }}{% if not forloop.last %}, {% endif %}{% empty %}Todas las categorías{% endfor %}
+</p>
+<p class="text-muted mb-3">Fecha: {{ count.created_at|date:"d/m/Y H:i" }}</p>
+
+<table class="table table-sm table-bordered">
+    <thead>
+        <tr>
+            <th>Código</th>
+            <th>Producto</th>
+            <th class="text-end">Stock en sistema</th>
+            <th class="text-end" style="width: 160px;">Conteo real (a mano)</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for item in items %}
+        <tr>
+            <td>{{ item.product.code }}</td>
+            <td>{{ item.product.name }}</td>
+            <td class="text-end">{{ item.system_stock }}</td>
+            <td>&nbsp;</td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="4">No hay productos en este conteo.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<p class="text-muted small mt-4">Total de productos: {{ items|length }}</p>
+<div class="mt-5 d-flex" style="gap: 4rem;">
+    <p class="border-top pt-1" style="width: 250px;">Contado por</p>
+    <p class="border-top pt-1" style="width: 250px;">Fecha</p>
+</div>
+{% endblock %}

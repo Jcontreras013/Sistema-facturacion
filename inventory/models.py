@@ -306,6 +306,10 @@ class InventoryCount(models.Model):
 
     status = models.CharField("Estado", max_length=10, choices=STATUS_CHOICES, default="abierto")
     notes = models.CharField("Notas", max_length=255, blank=True)
+    categories = models.ManyToManyField(
+        Category, verbose_name="Categorías", blank=True, related_name="inventory_counts",
+        help_text="Si no eliges ninguna, el conteo incluye todas las categorías.",
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Creado por", on_delete=models.SET_NULL, null=True, blank=True,
         related_name="inventory_counts",

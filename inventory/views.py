@@ -447,22 +447,29 @@ def purchase_order_delete(request, pk):
 
 @admin_required
 def inventory_count_list(request):
-    counts = InventoryCount.objects.select_related("created_by").all()
+    counts = InventoryCount.objects.select_related("created_by").prefetch_related("categories").all()
     return render(request, "inventory/inventory_count_list.html", {"counts": counts})
 
 
 @admin_required
 def inventory_count_create(request):
     if request.method == "POST":
-        count = InventoryCount.objects.create(created_by=request.user, notes=request.POST.get("notes", ""))
+        category_ids = [c for c in request.POST.getlist("categories") if c]
         products = Product.objects.filter(is_active=True)
+        categories = Category.objects.filter(pk__in=category_ids)
+        if categories:
+            products = products.filter(category__in=categories)
+        count = InventoryCount.objects.create(created_by=request.user, notes=request.POST.get("notes", ""))
+        if categories:
+            count.categories.set(categories)
         InventoryCountItem.objects.bulk_create(
             [InventoryCountItem(inventory_count=count, product=p, system_stock=p.stock) for p in products]
         )
         log_action(request.user, "created", count, extra=f"{products.count()} productos")
         messages.success(request, "Conteo iniciado. Ingresa las cantidades reales que encuentres en bodega.")
         return redirect("inventory:inventory_count_detail", pk=count.pk)
-    return render(request, "inventory/inventory_count_form.html")
+    categories = Category.objects.all()
+    return render(request, "inventory/inventory_count_form.html", {"categories": categories})
 
 
 @admin_required
@@ -470,6 +477,13 @@ def inventory_count_detail(request, pk):
     count = get_object_or_404(InventoryCount, pk=pk)
     items = count.items.select_related("product").all()
     return render(request, "inventory/inventory_count_detail.html", {"count": count, "items": items})
+
+
+@admin_required
+def inventory_count_print(request, pk):
+    count = get_object_or_404(InventoryCount, pk=pk)
+    items = count.items.select_related("product").all()
+    return render(request, "inventory/inventory_count_print.html", {"count": count, "items": items})
 
 
 @admin_required
