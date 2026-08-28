@@ -11,16 +11,21 @@
     </div>
 </div>
 <div class="card p-4" style="max-width: 700px;">
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    {% endif %}
     <form method="post">
         {% csrf_token %}
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">{{ form.code.label }}</label>
                 {{ form.code }}
+                <small class="text-muted">{{ form.code.help_text }}</small>
             </div>
             <div class="col-md-6">
                 <label class="form-label">{{ form.barcode.label }}</label>
                 {{ form.barcode }}
+                <small class="text-muted">Si no lo tienes, deja este campo vacío y usa el código/SKU.</small>
             </div>
             <div class="col-md-12">
                 <label class="form-label">{{ form.name.label }}</label>

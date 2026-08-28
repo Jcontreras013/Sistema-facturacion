@@ -1,3 +1,5 @@
+import uuid
+
 from django import forms
 
 from .models import Category, Product, Promotion, PurchaseOrder, Provider, StockMovement
@@ -28,6 +30,12 @@ class ProviderForm(forms.ModelForm):
 
 
 class ProductForm(forms.ModelForm):
+    code = forms.CharField(
+        label="Código / SKU", max_length=50, required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+        help_text="Si no lo escribes, se genera automáticamente a partir del código de barras.",
+    )
+
     class Meta:
         model = Product
         fields = [
@@ -48,7 +56,6 @@ class ProductForm(forms.ModelForm):
             "is_active",
         ]
         widgets = {
-            "code": forms.TextInput(attrs={"class": "form-control"}),
             "barcode": forms.TextInput(attrs={"class": "form-control"}),
             "name": forms.TextInput(attrs={"class": "form-control"}),
             "category": forms.Select(attrs={"class": "form-select"}),
@@ -67,6 +74,19 @@ class ProductForm(forms.ModelForm):
 
     def clean_barcode(self):
         return self.cleaned_data.get("barcode") or None
+
+    def clean(self):
+        cleaned_data = super().clean()
+        code = (cleaned_data.get("code") or "").strip()
+        barcode = cleaned_data.get("barcode")
+        if not code and not barcode:
+            raise forms.ValidationError(
+                "Ingresa al menos el código de barras o el código/SKU del producto."
+            )
+        if not code:
+            code = f"BAR-{uuid.uuid4().hex[:8].upper()}"
+        cleaned_data["code"] = code
+        return cleaned_data
 
 
 class PromotionForm(forms.ModelForm):
