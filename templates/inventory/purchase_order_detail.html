@@ -76,19 +76,24 @@
 <div class="card p-3 mb-3">
     <div class="d-flex justify-content-between align-items-center">
         <h6 class="card-section-title mb-0"><i class="bi bi-plus-lg"></i> Agregar producto</h6>
-        <a href="{% url 'inventory:product_create' %}?next={{ request.path|urlencode }}&provider={{ order.provider_id }}" class="btn btn-sm btn-outline-primary">
-            <i class="bi bi-box-seam"></i> ¿No está en la lista? Crear producto nuevo
-        </a>
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="newProductToggle">
+            <label class="form-check-label small" for="newProductToggle">Es un producto nuevo (solo el nombre)</label>
+        </div>
     </div>
     <form method="post" action="{% url 'inventory:purchase_order_add_item' order.pk %}" class="row g-2 align-items-end mt-1">
         {% csrf_token %}
-        <div class="col-md-5">
+        <div class="col-md-5" id="existingProductField">
             <label class="form-label small">Producto</label>
-            <select name="product" class="form-select" required>
+            <select name="product" id="productSelect" class="form-select">
                 {% for product in products %}
                     <option value="{{ product.pk }}">{{ product.name }} ({{ product.code }})</option>
                 {% endfor %}
             </select>
+        </div>
+        <div class="col-md-5" id="newProductField" style="display:none;">
+            <label class="form-label small">Nombre del producto nuevo</label>
+            <input type="text" name="new_product_name" id="newProductName" class="form-control" placeholder="Como lo dice el catálogo del proveedor">
         </div>
         <div class="col-md-3">
             <label class="form-label small">Cantidad</label>
@@ -102,7 +107,36 @@
             <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i></button>
         </div>
     </form>
+    <p class="small text-muted mt-2 mb-0" id="newProductHint" style="display:none;">
+        Se crea con código automático, este proveedor y este costo como precio de compra. Después, sin prisa,
+        completa el precio de venta, el código de barras y la categoría desde
+        <a href="{% url 'inventory:product_list' %}?incomplete=1" target="_blank">Productos → sin precio de venta</a>.
+    </p>
+    <p class="small mt-2 mb-0">
+        <a href="{% url 'inventory:product_create' %}?next={{ request.path|urlencode }}&provider={{ order.provider_id }}">
+            ¿Necesitas llenar todos los datos del producto (código de barras, ISV, etc.) desde ya?
+        </a>
+    </p>
 </div>
+<script>
+(function () {
+    const toggle = document.getElementById('newProductToggle');
+    const existingField = document.getElementById('existingProductField');
+    const newField = document.getElementById('newProductField');
+    const productSelect = document.getElementById('productSelect');
+    const newProductName = document.getElementById('newProductName');
+    const hint = document.getElementById('newProductHint');
+
+    toggle.addEventListener('change', () => {
+        const isNew = toggle.checked;
+        existingField.style.display = isNew ? 'none' : '';
+        newField.style.display = isNew ? '' : 'none';
+        hint.style.display = isNew ? 'block' : 'none';
+        productSelect.disabled = isNew;
+        newProductName.disabled = !isNew;
+    });
+})();
+</script>
 {% endif %}
 
 {% if order.status == "enviada" %}

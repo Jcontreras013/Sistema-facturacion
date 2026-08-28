@@ -49,13 +49,16 @@ def product_list(request):
     products = Product.objects.select_related("category", "provider").all()
     if query:
         products = products.filter(Q(name__icontains=query) | Q(code__icontains=query))
+    incomplete_only = request.GET.get("incomplete") == "1"
+    if incomplete_only:
+        products = products.filter(sale_price=0)
     low_stock_only = request.GET.get("low_stock") == "1"
     if low_stock_only:
         products = [p for p in products if p.is_low_stock]
     return render(
         request,
         "inventory/product_list.html",
-        {"products": products, "query": query, "low_stock_only": low_stock_only},
+        {"products": products, "query": query, "low_stock_only": low_stock_only, "incomplete_only": incomplete_only},
     )
 
 
@@ -311,7 +314,6 @@ def purchase_order_detail(request, pk):
 def purchase_order_add_item(request, pk):
     order = get_object_or_404(PurchaseOrder, pk=pk)
     if request.method == "POST" and order.status == "borrador":
-        product = get_object_or_404(Product, pk=request.POST.get("product"))
         try:
             quantity = Decimal(request.POST.get("quantity_ordered", "0"))
             unit_cost = Decimal(request.POST.get("unit_cost", "0"))
@@ -321,6 +323,27 @@ def purchase_order_add_item(request, pk):
         if quantity <= 0:
             messages.error(request, "La cantidad debe ser mayor a cero.")
             return redirect("inventory:purchase_order_detail", pk=order.pk)
+
+        new_product_name = (request.POST.get("new_product_name") or "").strip()
+        if new_product_name:
+            product = Product.objects.create(
+                code=f"RAP-{uuid.uuid4().hex[:8].upper()}",
+                name=new_product_name,
+                provider=order.provider,
+                purchase_price=unit_cost,
+                sale_price=0,
+            )
+            log_action(
+                request.user, "created", product,
+                extra=f"Creado rápido (solo nombre) desde la orden {order.number}",
+            )
+        else:
+            product_id = request.POST.get("product")
+            if not product_id:
+                messages.error(request, "Selecciona un producto o marca \"Es un producto nuevo\" y escribe el nombre.")
+                return redirect("inventory:purchase_order_detail", pk=order.pk)
+            product = get_object_or_404(Product, pk=product_id)
+
         PurchaseOrderItem.objects.create(
             purchase_order=order, product=product, quantity_ordered=quantity, unit_cost=unit_cost
         )
