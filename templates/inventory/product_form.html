@@ -26,6 +26,7 @@
                 <label class="form-label">{{ form.barcode.label }}</label>
                 {{ form.barcode }}
                 <small class="text-muted">Si no lo tienes, deja este campo vacío y usa el código/SKU.</small>
+                <div id="barcodeWarning" class="alert alert-warning py-2 px-3 mt-2 mb-0 small" style="display:none;"></div>
             </div>
             <div class="col-md-12">
                 <label class="form-label">{{ form.name.label }}</label>
@@ -88,4 +89,47 @@
         </div>
     </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const barcodeInput = document.getElementById('id_barcode');
+    const warningBox = document.getElementById('barcodeWarning');
+    const currentPk = '{{ form.instance.pk|default:"" }}';
+    let debounceTimer = null;
+
+    async function checkBarcode() {
+        const value = barcodeInput.value.trim();
+        if (!value) {
+            warningBox.style.display = 'none';
+            return;
+        }
+        const params = new URLSearchParams({ barcode: value });
+        if (currentPk) params.set('exclude', currentPk);
+        try {
+            const resp = await fetch('{% url "inventory:product_check_barcode" %}?' + params.toString());
+            const data = await resp.json();
+            if (data.exists) {
+                warningBox.innerHTML = `<i class="bi bi-exclamation-triangle"></i> Este código de barras ya está registrado en <strong>${data.name}</strong> (${data.code}). Puedes continuar si es una variante de empaque del mismo producto.`;
+                warningBox.style.display = 'block';
+            } else {
+                warningBox.style.display = 'none';
+            }
+        } catch (e) {
+            warningBox.style.display = 'none';
+        }
+    }
+
+    barcodeInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(checkBarcode, 400);
+    });
+    barcodeInput.addEventListener('blur', checkBarcode);
+
+    if (barcodeInput.value.trim()) {
+        checkBarcode();
+    }
+})();
+</script>
 {% endblock %}

@@ -6,6 +6,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from core.audit import log_action
@@ -121,6 +122,24 @@ def product_detail(request, pk):
         "inventory/product_detail.html",
         {"product": product, "movements": movements, "form": form},
     )
+
+
+@login_required
+def product_check_barcode(request):
+    """Verificación en vivo desde el formulario de productos: avisa si el código de barras
+    ya está registrado en otro producto, sin bloquear el guardado (algunos proveedores repiten
+    el código de barras entre variantes de empaque del mismo artículo)."""
+    barcode = (request.GET.get("barcode") or "").strip()
+    exclude_pk = request.GET.get("exclude")
+    if not barcode:
+        return JsonResponse({"exists": False})
+    matches = Product.objects.filter(barcode=barcode)
+    if exclude_pk:
+        matches = matches.exclude(pk=exclude_pk)
+    match = matches.first()
+    if match:
+        return JsonResponse({"exists": True, "name": match.name, "code": match.code, "pk": match.pk})
+    return JsonResponse({"exists": False})
 
 
 @admin_required

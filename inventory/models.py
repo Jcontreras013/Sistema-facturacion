@@ -47,7 +47,10 @@ class Product(models.Model):
     ]
 
     code = models.CharField("Código / SKU", max_length=50, unique=True)
-    barcode = models.CharField("Código de barras", max_length=64, unique=True, null=True, blank=True)
+    barcode = models.CharField(
+        "Código de barras", max_length=64, null=True, blank=True,
+        help_text="No es obligatorio que sea único: a veces el mismo código de barras se repite en variantes de empaque del mismo proveedor.",
+    )
     name = models.CharField("Nombre", max_length=150)
     category = models.ForeignKey(
         Category, verbose_name="Categoría", on_delete=models.SET_NULL, null=True, blank=True, related_name="products"

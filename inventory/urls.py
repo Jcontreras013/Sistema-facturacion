@@ -9,6 +9,7 @@ urlpatterns = [
     path("productos/nuevo/", views.product_create, name="product_create"),
     path("productos/importar/", views.product_import, name="product_import"),
     path("productos/importar/mapear/", views.product_import_map, name="product_import_map"),
+    path("productos/verificar-codigo-barras/", views.product_check_barcode, name="product_check_barcode"),
     path("productos/<int:pk>/", views.product_detail, name="product_detail"),
     path("productos/<int:pk>/editar/", views.product_update, name="product_update"),
     path("productos/<int:pk>/eliminar/", views.product_delete, name="product_delete"),
