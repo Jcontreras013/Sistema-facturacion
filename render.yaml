@@ -9,7 +9,7 @@ services:
     name: minimarket-facturacion
     runtime: python
     plan: free
-    branch: claude/mini-markets-system-fme1x5
+    branch: main
     buildCommand: "./build.sh"
     startCommand: "gunicorn config.wsgi:application"
     envVars:
