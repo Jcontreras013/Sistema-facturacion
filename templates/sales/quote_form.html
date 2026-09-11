@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Nueva cotización{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-file-earmark-text"></i></div>
+        <div>
+            <h2>Nueva cotización</h2>
+            <p class="page-header-subtitle">Después de crearla podrás agregar los productos</p>
+        </div>
+    </div>
+</div>
+<div class="card p-4" style="max-width: 600px;">
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">Cliente</label>
+            <select name="client" class="form-select">
+                <option value="">Sin cliente / consumidor final</option>
+                {% for client in clients %}
+                    <option value="{{ client.pk }}">{{ client.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Válida hasta</label>
+            <input type="date" name="valid_until" class="form-control">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Notas</label>
+            <input type="text" name="notes" class="form-control" placeholder="Notas (opcional)">
+        </div>
+        <button type="submit" class="btn btn-primary">Crear cotización</button>
+        <a href="{% url 'sales:quote_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

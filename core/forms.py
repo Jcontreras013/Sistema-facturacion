@@ -31,6 +31,10 @@ class CompanyForm(forms.ModelForm):
             "default_isv_rate",
             "receipt_format",
             "auto_print_on_sale",
+            "electronic_invoicing_enabled",
+            "psa_provider_name",
+            "psa_api_url",
+            "psa_api_key",
         ]
         widgets = {
             "business_name": forms.TextInput(attrs={"class": "form-control"}),
@@ -55,6 +59,10 @@ class CompanyForm(forms.ModelForm):
             "default_isv_rate": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
             "receipt_format": forms.Select(attrs={"class": "form-select"}),
             "auto_print_on_sale": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "electronic_invoicing_enabled": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "psa_provider_name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Nombre del proveedor certificado por el SAR"}),
+            "psa_api_url": forms.TextInput(attrs={"class": "form-control", "placeholder": "https://"}),
+            "psa_api_key": forms.PasswordInput(attrs={"class": "form-control"}, render_value=True),
         }
 
     def clean(self):

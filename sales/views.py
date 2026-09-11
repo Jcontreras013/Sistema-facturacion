@@ -18,7 +18,7 @@ from core.models import Company
 from core.permissions import admin_required, is_admin
 from inventory.models import Product, StockMovement
 
-from .models import CashSession, CreditNote, CreditNoteItem, HeldSale, Sale, SaleItem
+from .models import CashSession, CreditNote, CreditNoteItem, HeldSale, Quote, QuoteItem, Sale, SaleItem
 
 DISCOUNT_TOKEN_SALT = "pos-discount-authorization"
 DISCOUNT_TOKEN_MAX_AGE = 300  # 5 minutos: el token de autorización expira rápido por seguridad.
@@ -672,3 +672,147 @@ def credit_note_delete(request, pk):
         messages.success(request, f"Nota de crédito {number} eliminada. El stock devuelto fue revertido.")
         return redirect("sales:sale_detail", pk=sale.pk)
     return render(request, "sales/credit_note_confirm_delete.html", {"credit_note": credit_note})
+
+
+# ---- Cotizaciones / proformas ----
+
+@login_required
+def quote_list(request):
+    quotes = Quote.objects.select_related("client").all()
+    return render(request, "sales/quote_list.html", {"quotes": quotes})
+
+
+@login_required
+def quote_create(request):
+    if request.method == "POST":
+        client_id = request.POST.get("client") or None
+        valid_until = parse_date(request.POST.get("valid_until", "") or "")
+        notes = (request.POST.get("notes") or "").strip()
+        quote = Quote.objects.create(
+            client_id=client_id, valid_until=valid_until, notes=notes, created_by=request.user
+        )
+        log_action(request.user, "created", quote)
+        messages.success(request, f"Cotización {quote.number} creada. Ahora agrega los productos.")
+        return redirect("sales:quote_detail", pk=quote.pk)
+    clients = Client.objects.filter(is_active=True).order_by("name")
+    return render(request, "sales/quote_form.html", {"clients": clients})
+
+
+@login_required
+def quote_detail(request, pk):
+    quote = get_object_or_404(Quote.objects.select_related("client", "created_by"), pk=pk)
+    products = Product.objects.filter(is_active=True).order_by("name")
+    return render(request, "sales/quote_detail.html", {"quote": quote, "products": products})
+
+
+@login_required
+def quote_add_item(request, pk):
+    quote = get_object_or_404(Quote, pk=pk)
+    if request.method == "POST" and quote.status == "borrador":
+        product = get_object_or_404(Product, pk=request.POST.get("product"))
+        try:
+            quantity = Decimal(request.POST.get("quantity", "0"))
+        except Exception:
+            messages.error(request, "Cantidad inválida.")
+            return redirect("sales:quote_detail", pk=quote.pk)
+        if quantity <= 0:
+            messages.error(request, "La cantidad debe ser mayor a cero.")
+            return redirect("sales:quote_detail", pk=quote.pk)
+
+        existing = quote.items.filter(product=product).first()
+        if existing:
+            existing.quantity += quantity
+            existing.save(update_fields=["quantity"])
+        else:
+            QuoteItem.objects.create(
+                quote=quote,
+                product=product,
+                quantity=quantity,
+                unit_price=product.price_for_quantity(quantity),
+                tax_rate=product.tax_rate,
+            )
+        messages.success(request, f"'{product.name}' agregado a la cotización.")
+    return redirect("sales:quote_detail", pk=quote.pk)
+
+
+@login_required
+def quote_remove_item(request, pk, item_pk):
+    quote = get_object_or_404(Quote, pk=pk)
+    item = get_object_or_404(QuoteItem, pk=item_pk, quote=quote)
+    if request.method == "POST" and quote.status == "borrador":
+        item.delete()
+        messages.success(request, "Producto quitado de la cotización.")
+    return redirect("sales:quote_detail", pk=quote.pk)
+
+
+@login_required
+def quote_send(request, pk):
+    quote = get_object_or_404(Quote, pk=pk)
+    if request.method == "POST" and quote.status == "borrador":
+        if not quote.items.exists():
+            messages.error(request, "Agrega al menos un producto antes de enviarla.")
+        else:
+            quote.status = "enviada"
+            quote.save(update_fields=["status"])
+            log_action(request.user, "updated", quote, extra="Cotización marcada como enviada")
+            messages.success(request, f"Cotización {quote.number} marcada como enviada.")
+    return redirect("sales:quote_detail", pk=quote.pk)
+
+
+@login_required
+def quote_cancel(request, pk):
+    quote = get_object_or_404(Quote, pk=pk)
+    if request.method == "POST" and quote.status in ("borrador", "enviada"):
+        quote.status = "cancelada"
+        quote.save(update_fields=["status"])
+        log_action(request.user, "updated", quote, extra="Cotización cancelada")
+        messages.success(request, f"Cotización {quote.number} cancelada.")
+    return redirect("sales:quote_detail", pk=quote.pk)
+
+
+@login_required
+def quote_delete(request, pk):
+    quote = get_object_or_404(Quote, pk=pk)
+    if quote.status != "borrador":
+        messages.error(request, "Solo puedes eliminar cotizaciones que todavía están en borrador.")
+        return redirect("sales:quote_detail", pk=quote.pk)
+    if request.method == "POST":
+        number = quote.number
+        log_action(request.user, "deleted", quote)
+        quote.delete()
+        messages.success(request, f"Cotización {number} eliminada.")
+        return redirect("sales:quote_list")
+    return render(request, "sales/quote_confirm_delete.html", {"quote": quote})
+
+
+@login_required
+def quote_convert(request, pk):
+    """Lleva los productos de la cotización al punto de venta (vía el mismo mecanismo de
+    'venta en espera') para que el cajero la cobre con el flujo normal del POS: caja abierta,
+    forma de pago, descuentos, etc. — sin duplicar esa lógica aquí."""
+    quote = get_object_or_404(Quote, pk=pk)
+    if quote.status not in ("borrador", "enviada"):
+        messages.error(request, "Esta cotización ya no se puede convertir a venta.")
+        return redirect("sales:quote_detail", pk=quote.pk)
+    if not quote.items.exists():
+        messages.error(request, "Agrega al menos un producto antes de convertirla en venta.")
+        return redirect("sales:quote_detail", pk=quote.pk)
+    if request.method == "POST":
+        held = HeldSale.objects.create(
+            user=request.user,
+            client_id=str(quote.client_id or ""),
+            client_name=quote.client.name if quote.client else "",
+            client_rtn=quote.client.document if quote.client else "",
+            notes=f"Convertida desde cotización {quote.number}",
+            cart_json=json.dumps(
+                [{"id": item.product_id, "quantity": str(item.quantity)} for item in quote.items.all()]
+            ),
+        )
+        quote.status = "convertida"
+        from django.utils import timezone
+
+        quote.converted_at = timezone.now()
+        quote.save(update_fields=["status", "converted_at"])
+        log_action(request.user, "updated", quote, extra="Convertida a venta en el POS")
+        return redirect(f"{reverse('sales:pos')}?recall={held.pk}")
+    return render(request, "sales/quote_confirm_convert.html", {"quote": quote})

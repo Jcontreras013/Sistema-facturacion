@@ -20,6 +20,15 @@
                 {% endif %}
                 {% if sale.is_contingency %}<span class="badge bg-warning text-dark">Emitida en contingencia (sin internet)</span>{% endif %}
             </div>
+            {% if sale.dte_status != "no_aplica" %}
+            <div class="no-print mt-1">
+                {% if sale.dte_status == "aceptada" %}<span class="badge bg-success">DTE aceptado por el SAR</span>
+                {% elif sale.dte_status == "rechazada" %}<span class="badge bg-danger">DTE rechazado por el SAR</span>
+                {% elif sale.dte_status == "enviada" %}<span class="badge bg-warning text-dark">DTE enviado, esperando respuesta</span>
+                {% elif sale.dte_status == "pendiente" %}<span class="badge bg-secondary">DTE pendiente de envío</span>
+                {% else %}<span class="badge bg-secondary" title="Régimen CFE sin proveedor certificado conectado">DTE: sin proveedor conectado</span>{% endif %}
+            </div>
+            {% endif %}
         </div>
     </div>
     <hr>

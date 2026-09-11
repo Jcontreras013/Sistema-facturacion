@@ -32,6 +32,13 @@
             </table>
             {% if credit_balance > 0 %}
             <a href="{% url 'clients:credit_payment_create' client.pk %}" class="btn btn-success btn-sm"><i class="bi bi-cash"></i> Registrar abono</a>
+            {% with whatsapp_url=client.whatsapp_reminder_url %}
+            {% if whatsapp_url %}
+            <a href="{{ whatsapp_url }}" target="_blank" rel="noopener" class="btn btn-outline-success btn-sm"><i class="bi bi-whatsapp"></i> Recordar por WhatsApp</a>
+            {% else %}
+            <span class="d-block small text-muted mt-2">Agrega un teléfono al cliente para poder enviarle un recordatorio por WhatsApp.</span>
+            {% endif %}
+            {% endwith %}
             {% endif %}
         </div>
         {% endif %}

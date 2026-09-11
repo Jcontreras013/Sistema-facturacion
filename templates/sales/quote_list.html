@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Cotizaciones{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-file-earmark-text"></i></div>
+        <div>
+            <h2>Cotizaciones</h2>
+            <p class="page-header-subtitle">Proformas para clientes, convertibles a venta sin recapturar productos</p>
+        </div>
+    </div>
+    <div class="page-header-actions">
+        <a href="{% url 'sales:quote_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nueva cotización</a>
+    </div>
+</div>
+<div class="card">
+    <table class="table table-hover mb-0">
+        <thead><tr><th>No.</th><th>Cliente</th><th>Estado</th><th class="text-end">Total</th><th>Fecha</th><th></th></tr></thead>
+        <tbody>
+        {% for quote in quotes %}
+            <tr>
+                <td><a href="{% url 'sales:quote_detail' quote.pk %}">{{ quote.number }}</a></td>
+                <td>{{ quote.client.name|default:"Sin cliente" }}</td>
+                <td>
+                    {% if quote.status == "borrador" %}<span class="badge bg-secondary">Borrador</span>
+                    {% elif quote.status == "enviada" %}
+                        {% if quote.is_expired %}<span class="badge bg-danger">Vencida</span>
+                        {% else %}<span class="badge bg-warning text-dark">Enviada</span>{% endif %}
+                    {% elif quote.status == "convertida" %}<span class="badge bg-success">Convertida a venta</span>
+                    {% else %}<span class="badge bg-danger">Cancelada</span>{% endif %}
+                </td>
+                <td class="text-end">L {{ quote.total|floatformat:2 }}</td>
+                <td>{{ quote.created_at|date:"d/m/Y H:i" }}</td>
+                <td class="text-end"><a href="{% url 'sales:quote_detail' quote.pk %}" class="btn btn-sm btn-outline-secondary">Ver</a></td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="6">
+                <div class="empty-state py-4">
+                    <i class="bi bi-file-earmark-text"></i>
+                    <p>No hay cotizaciones registradas.</p>
+                </div>
+            </td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

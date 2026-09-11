@@ -27,6 +27,7 @@
                 <li class="nav-item"><a class="nav-link" href="{% url 'core:dashboard' %}"><i class="bi bi-speedometer2"></i> Panel</a></li>
                 <li class="nav-item"><a class="nav-link nav-cta" href="{% url 'sales:pos' %}"><i class="bi bi-cash-register"></i> Vender</a></li>
                 <li class="nav-item"><a class="nav-link" href="{% url 'sales:sale_list' %}"><i class="bi bi-receipt"></i> Ventas</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'sales:quote_list' %}"><i class="bi bi-file-earmark-text"></i> Cotizaciones</a></li>
                 <li class="nav-item"><a class="nav-link" href="{% url 'inventory:product_list' %}"><i class="bi bi-box-seam"></i> Productos</a></li>
                 {% if is_admin %}
                 <li class="nav-item"><a class="nav-link" href="{% url 'inventory:category_list' %}"><i class="bi bi-tags"></i> Categorías</a></li>
@@ -45,9 +46,11 @@
                         <li><a class="dropdown-item" href="{% url 'reports:profit_report' %}">Ganancias</a></li>
                         <li><a class="dropdown-item" href="{% url 'reports:low_stock_report' %}">Stock bajo</a></li>
                         <li><a class="dropdown-item" href="{% url 'reports:expiring_products_report' %}">Próximos a vencer</a></li>
+                        <li><a class="dropdown-item" href="{% url 'reports:batch_expiration_report' %}">Lotes por vencer</a></li>
                         <li><a class="dropdown-item" href="{% url 'reports:tax_report' %}">Impuestos (ISV)</a></li>
                         <li><a class="dropdown-item" href="{% url 'reports:cash_flow_report' %}">Flujo de caja</a></li>
                         <li><a class="dropdown-item" href="{% url 'reports:accounts_receivable_report' %}">Cuentas por cobrar</a></li>
+                        <li><a class="dropdown-item" href="{% url 'reports:accounts_payable_report' %}">Cuentas por pagar</a></li>
                     </ul>
                 </li>
                 <li class="nav-item dropdown">

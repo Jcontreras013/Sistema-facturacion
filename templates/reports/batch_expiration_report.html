@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Lotes por vencer{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-boxes"></i></div>
+        <div>
+            <h2>Lotes vencidos o por vencer</h2>
+            <p class="page-header-subtitle">Por fecha de recepción, no por el vencimiento general del producto</p>
+        </div>
+    </div>
+    <div class="page-header-actions">
+        <a href="?export=xlsx" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> Descargar</a>
+    </div>
+</div>
+<div class="card p-3">
+    <table class="table table-sm">
+        <thead><tr><th>Código</th><th>Producto</th><th>Cantidad del lote</th><th>Vencimiento</th><th>Estado</th></tr></thead>
+        <tbody>
+        {% for batch in batches %}
+            <tr class="table-low-stock">
+                <td>{{ batch.product.code }}</td>
+                <td><a href="{% url 'inventory:product_detail' batch.product.pk %}">{{ batch.product.name }}</a></td>
+                <td>{{ batch.quantity_received }}</td>
+                <td>{{ batch.expiration_date|date:"d/m/Y" }}</td>
+                <td>
+                    {% if batch.is_expired %}<span class="badge bg-danger">Vencido</span>
+                    {% else %}<span class="badge bg-warning text-dark">Por vencer</span>{% endif %}
+                </td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="5">
+                <div class="empty-state py-4">
+                    <i class="bi bi-check2-circle"></i>
+                    <p>No hay lotes vencidos ni próximos a vencer.</p>
+                </div>
+            </td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -71,6 +71,27 @@
     </div>
 
     <div class="col-md-7">
+        <div class="card p-3 mb-3">
+            <h6>Lotes recibidos</h6>
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Recibido</th><th>Cantidad</th><th>Vencimiento del lote</th><th></th></tr></thead>
+                <tbody>
+                {% for batch in batches %}
+                    <tr>
+                        <td>{{ batch.received_at|date:"d/m/Y" }}</td>
+                        <td>{{ batch.quantity_received }}</td>
+                        <td>{{ batch.expiration_date|date:"d/m/Y"|default:"—" }}</td>
+                        <td>
+                            {% if batch.is_expired %}<span class="badge bg-danger">Vencido</span>
+                            {% elif batch.is_expiring_soon %}<span class="badge bg-warning text-dark">Por vencer</span>{% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="4" class="text-muted">Sin lotes registrados todavía. Se crean automáticamente al recibir órdenes de compra con fecha de vencimiento.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
         <div class="card p-3">
             <h6>Historial de movimientos</h6>
             <table class="table table-sm">

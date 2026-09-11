@@ -63,10 +63,30 @@
     </div>
 </div>
 
+<div class="modal fade" id="cameraScanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-upc-scan"></i> Escanear código de barras</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <video id="cameraScanVideo" autoplay playsinline muted style="width:100%; max-height:60vh; background:#000; border-radius:8px;"></video>
+                <p id="cameraScanStatus" class="text-muted small mt-2 mb-0">Apunta la cámara al código de barras del producto.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row g-4">
     <div class="col-md-7">
         <div class="position-relative mb-3">
-            <input type="text" id="searchBox" class="form-control" placeholder="Buscar o escanear código de barras... (Enter para agregar)" autocomplete="off" autofocus>
+            <div class="input-group">
+                <input type="text" id="searchBox" class="form-control" placeholder="Buscar o escanear código de barras... (Enter para agregar)" autocomplete="off" autofocus>
+                <button type="button" id="cameraScanBtn" class="btn btn-outline-secondary" title="Escanear con la cámara del celular">
+                    <i class="bi bi-upc-scan"></i>
+                </button>
+            </div>
             <div id="productSearchResults" class="list-group position-absolute w-100 shadow-sm" style="z-index:1050; max-height:320px; overflow-y:auto; display:none;"></div>
         </div>
         <div class="card" style="max-height: 70vh; overflow-y: auto;">
@@ -1061,6 +1081,99 @@ document.getElementById('holdSaleBtn').addEventListener('click', async () => {
     refreshHeldSalesBadge();
     showPosMessage('Venta suspendida. Puedes recuperarla desde "Ventas en espera".', 'success');
 });
+
+// Si llegamos desde "Convertir a venta" de una cotización, el carrito quedó guardado
+// como una venta en espera (?recall=<id>): se recupera solo, igual que desde el botón.
+(function () {
+    const params = new URLSearchParams(window.location.search);
+    const recallId = params.get('recall');
+    if (recallId) {
+        history.replaceState(null, '', window.location.pathname);
+        recallHeldSale(recallId);
+    }
+})();
+
+// ---- Escaneo de código de barras con la cámara del celular ----
+// Usa la BarcodeDetector nativa del navegador (Chrome/Android la trae de fábrica). Si el
+// navegador no la soporta (por ejemplo Safari/iOS en versiones viejas), se avisa y el cajero
+// sigue usando el lector físico o el teclado, como hasta ahora.
+const cameraScanModalEl = document.getElementById('cameraScanModal');
+const cameraScanBtn = document.getElementById('cameraScanBtn');
+if (cameraScanModalEl && cameraScanBtn) {
+    const cameraScanModal = new bootstrap.Modal(cameraScanModalEl);
+    const cameraScanVideo = document.getElementById('cameraScanVideo');
+    const cameraScanStatus = document.getElementById('cameraScanStatus');
+    let cameraStream = null;
+    let cameraScanRAF = null;
+    let cameraScanLastCode = null;
+    let cameraScanLastTime = 0;
+
+    function stopCameraScan() {
+        if (cameraScanRAF) {
+            cancelAnimationFrame(cameraScanRAF);
+            cameraScanRAF = null;
+        }
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(t => t.stop());
+            cameraStream = null;
+        }
+    }
+
+    async function detectLoop(detector) {
+        if (!cameraStream) return;
+        try {
+            const codes = await detector.detect(cameraScanVideo);
+            if (codes.length > 0) {
+                const value = codes[0].rawValue;
+                const now = Date.now();
+                if (value && (value !== cameraScanLastCode || now - cameraScanLastTime > 2000)) {
+                    cameraScanLastCode = value;
+                    cameraScanLastTime = now;
+                    const added = addByBarcodeOrCode(value);
+                    cameraScanStatus.classList.toggle('text-success', added);
+                    cameraScanStatus.classList.toggle('text-muted', !added);
+                    cameraScanStatus.textContent = added
+                        ? `Agregado: ${value}`
+                        : `El código "${value}" no coincide con ningún producto.`;
+                    if (added) {
+                        setTimeout(() => {
+                            cameraScanStatus.classList.remove('text-success');
+                            cameraScanStatus.classList.add('text-muted');
+                            cameraScanStatus.textContent = 'Apunta la cámara al código de barras del producto.';
+                        }, 1200);
+                    }
+                }
+            }
+        } catch (e) {
+            // Un cuadro sin lectura clara no es un error real: se reintenta en el siguiente.
+        }
+        cameraScanRAF = requestAnimationFrame(() => detectLoop(detector));
+    }
+
+    cameraScanBtn.addEventListener('click', async () => {
+        if (!('BarcodeDetector' in window)) {
+            showPosMessage('Tu navegador no soporta escaneo con cámara. Usa un lector físico o escribe el código.', 'warning');
+            return;
+        }
+        cameraScanStatus.classList.remove('text-success');
+        cameraScanStatus.classList.add('text-muted');
+        cameraScanStatus.textContent = 'Apunta la cámara al código de barras del producto.';
+        cameraScanModal.show();
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            cameraScanVideo.srcObject = cameraStream;
+            const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'] });
+            cameraScanRAF = requestAnimationFrame(() => detectLoop(detector));
+        } catch (e) {
+            cameraScanStatus.textContent = 'No se pudo acceder a la cámara. Revisa los permisos del navegador.';
+        }
+    });
+
+    cameraScanModalEl.addEventListener('hidden.bs.modal', () => {
+        stopCameraScan();
+        cameraScanVideo.srcObject = null;
+    });
+}
 
 refreshHeldSalesBadge();
 

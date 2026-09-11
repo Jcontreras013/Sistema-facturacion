@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Cuentas por pagar{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-cash-coin"></i></div>
+        <div>
+            <h2>Cuentas por pagar</h2>
+            <p class="page-header-subtitle">Órdenes de compra con saldo pendiente de pago a proveedores</p>
+        </div>
+    </div>
+    <div class="page-header-actions">
+        <a href="?export=xlsx" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> Descargar</a>
+    </div>
+</div>
+
+<div class="card stat-card stat-amber p-3 text-white mb-3" style="max-width: 320px;">
+    <i class="bi bi-cash-coin stat-icon"></i>
+    <div class="small opacity-75">Total pendiente de pago</div>
+    <div class="fs-3 fw-bold">L {{ total_payable|floatformat:2 }}</div>
+</div>
+
+<div class="card p-3">
+    <table class="table table-sm">
+        <thead><tr><th>Orden</th><th>Proveedor</th><th class="text-end">Total</th><th class="text-end">Pagado</th><th class="text-end">Saldo</th><th></th></tr></thead>
+        <tbody>
+        {% for row in rows %}
+            <tr>
+                <td><a href="{% url 'inventory:purchase_order_detail' row.order.pk %}">{{ row.order.number }}</a></td>
+                <td>{{ row.order.provider.name }}</td>
+                <td class="text-end">L {{ row.total|floatformat:2 }}</td>
+                <td class="text-end">L {{ row.paid|floatformat:2 }}</td>
+                <td class="text-end text-danger fw-bold">L {{ row.balance|floatformat:2 }}</td>
+                <td class="text-end"><a href="{% url 'inventory:purchase_order_payment_create' row.order.pk %}" class="btn btn-sm btn-outline-success">Registrar pago</a></td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="6">
+                <div class="empty-state py-4">
+                    <i class="bi bi-check2-circle"></i>
+                    <p>No hay saldos pendientes con proveedores.</p>
+                </div>
+            </td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

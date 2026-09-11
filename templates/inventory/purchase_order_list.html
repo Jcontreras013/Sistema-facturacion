@@ -26,6 +26,11 @@
                     {% elif order.status == "enviada" %}<span class="badge bg-warning text-dark">Enviada</span>
                     {% elif order.status == "recibida" %}<span class="badge bg-success">Recibida</span>
                     {% else %}<span class="badge bg-danger">Cancelada</span>{% endif %}
+                    {% if order.status == "enviada" or order.status == "recibida" %}
+                        {% if order.payment_status == "pagada" %}<span class="badge bg-success">Pagada</span>
+                        {% elif order.payment_status == "parcial" %}<span class="badge bg-warning text-dark">Pago parcial</span>
+                        {% else %}<span class="badge bg-danger">Sin pagar</span>{% endif %}
+                    {% endif %}
                 </td>
                 <td class="text-end">L {{ order.total_cost|floatformat:2 }}</td>
                 <td>{{ order.created_at|date:"d/m/Y H:i" }}</td>

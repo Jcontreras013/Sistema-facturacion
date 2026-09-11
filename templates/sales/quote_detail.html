@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Cotización {{ quote.number }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-file-earmark-text"></i></div>
+        <div>
+            <h2>Cotización {{ quote.number }}</h2>
+            <p class="page-header-subtitle">
+                Cliente: {{ quote.client.name|default:"Sin cliente" }} —
+                {% if quote.status == "borrador" %}<span class="badge bg-secondary">Borrador</span>
+                {% elif quote.status == "enviada" %}
+                    {% if quote.is_expired %}<span class="badge bg-danger">Vencida</span>
+                    {% else %}<span class="badge bg-warning text-dark">Enviada</span>{% endif %}
+                {% elif quote.status == "convertida" %}<span class="badge bg-success">Convertida a venta</span>
+                {% else %}<span class="badge bg-danger">Cancelada</span>{% endif %}
+                {% if quote.valid_until %}<span class="text-muted small ms-2">Válida hasta {{ quote.valid_until|date:"d/m/Y" }}</span>{% endif %}
+            </p>
+        </div>
+    </div>
+    <div class="page-header-actions">
+        {% if quote.status == "borrador" %}
+        <form method="post" action="{% url 'sales:quote_send' quote.pk %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-primary"><i class="bi bi-send"></i> Marcar como enviada</button>
+        </form>
+        <a href="{% url 'sales:quote_delete' quote.pk %}" class="btn btn-outline-danger"><i class="bi bi-trash"></i> Eliminar</a>
+        {% endif %}
+        {% if quote.status == "borrador" or quote.status == "enviada" %}
+        <a href="{% url 'sales:quote_convert' quote.pk %}" class="btn btn-success"><i class="bi bi-cart-check"></i> Convertir a venta</a>
+        {% endif %}
+        {% if quote.status == "enviada" %}
+        <form method="post" action="{% url 'sales:quote_cancel' quote.pk %}" class="d-inline" onsubmit="return confirm('¿Cancelar esta cotización?');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger"><i class="bi bi-x-circle"></i> Cancelar</button>
+        </form>
+        {% endif %}
+        <a href="{% url 'sales:quote_list' %}" class="btn btn-outline-secondary">Volver</a>
+    </div>
+</div>
+
+{% if quote.notes %}<p class="text-muted">Notas: {{ quote.notes }}</p>{% endif %}
+
+<div class="card p-3 mb-3">
+    <table class="table table-sm mb-0">
+        <thead><tr><th>Producto</th><th class="text-end">Cantidad</th><th class="text-end">Precio unit.</th><th class="text-end">ISV</th><th class="text-end">Subtotal</th>{% if quote.status == "borrador" %}<th></th>{% endif %}</tr></thead>
+        <tbody>
+        {% for item in quote.items.all %}
+            <tr>
+                <td>{{ item.product.name }}</td>
+                <td class="text-end">{{ item.quantity }}</td>
+                <td class="text-end">L {{ item.unit_price|floatformat:2 }}</td>
+                <td class="text-end">L {{ item.tax_amount|floatformat:2 }}</td>
+                <td class="text-end">L {{ item.total|floatformat:2 }}</td>
+                {% if quote.status == "borrador" %}
+                <td class="text-end">
+                    <form method="post" action="{% url 'sales:quote_remove_item' quote.pk item.pk %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-x"></i></button>
+                    </form>
+                </td>
+                {% endif %}
+            </tr>
+        {% empty %}
+            <tr><td colspan="6">
+                <div class="empty-state py-3">
+                    <i class="bi bi-box-seam"></i>
+                    <p>Todavía no agregas productos a esta cotización.</p>
+                </div>
+            </td></tr>
+        {% endfor %}
+        </tbody>
+        {% if quote.items.all %}
+        <tfoot>
+            <tr><td colspan="4" class="text-end">Subtotal</td><td class="text-end">L {{ quote.subtotal|floatformat:2 }}</td>{% if quote.status == "borrador" %}<td></td>{% endif %}</tr>
+            <tr><td colspan="4" class="text-end">ISV</td><td class="text-end">L {{ quote.tax|floatformat:2 }}</td>{% if quote.status == "borrador" %}<td></td>{% endif %}</tr>
+            <tr class="fw-bold"><td colspan="4" class="text-end">Total</td><td class="text-end">L {{ quote.total|floatformat:2 }}</td>{% if quote.status == "borrador" %}<td></td>{% endif %}</tr>
+        </tfoot>
+        {% endif %}
+    </table>
+</div>
+
+{% if quote.status == "borrador" %}
+<div class="card p-3 mb-3">
+    <h6 class="card-section-title"><i class="bi bi-plus-lg"></i> Agregar producto</h6>
+    <form method="post" action="{% url 'sales:quote_add_item' quote.pk %}" class="row g-2 align-items-end mt-1">
+        {% csrf_token %}
+        <div class="col-md-7">
+            <label class="form-label small">Producto</label>
+            <select name="product" class="form-select">
+                {% for product in products %}
+                    <option value="{{ product.pk }}">{{ product.name }} ({{ product.code }}) — L {{ product.sale_price|floatformat:2 }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small">Cantidad</label>
+            <input type="number" name="quantity" class="form-control" min="0.01" step="0.01" value="1" required>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Agregar</button>
+        </div>
+    </form>
+    <p class="small text-muted mt-2 mb-0">El precio se toma del precio de venta actual del producto (incluyendo mayoreo o promoción vigente si aplica).</p>
+</div>
+{% endif %}
+{% endblock %}

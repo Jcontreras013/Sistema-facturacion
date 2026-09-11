@@ -10,9 +10,11 @@
         </div>
     </div>
     <div class="page-header-actions">
+        <a href="{% url 'reports:batch_expiration_report' %}" class="btn btn-outline-secondary"><i class="bi bi-boxes"></i> Ver por lote</a>
         <a href="?export=xlsx" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel"></i> Descargar</a>
     </div>
 </div>
+<p class="text-muted small">Esta fecha es la del producto en general. Si recibiste el mismo producto en distintas fechas con vencimientos distintos, revisa <a href="{% url 'reports:batch_expiration_report' %}">los lotes por vencer</a> para verlo desglosado por recepción.</p>
 <div class="card p-3">
     <table class="table table-sm">
         <thead><tr><th>Código</th><th>Producto</th><th>Vencimiento</th><th>Estado</th><th>Stock</th></tr></thead>

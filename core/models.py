@@ -56,6 +56,17 @@ class Company(models.Model):
     )
     auto_print_on_sale = models.BooleanField("Imprimir automáticamente al cobrar una venta", default=True)
 
+    # Facturación electrónica (DTE): conexión con un Proveedor de Servicios Autorizado (PSA)
+    # certificado por el SAR. Estos campos solo guardan la configuración de conexión — el sistema
+    # no incluye ningún proveedor real conectado (ver sales/dte.py).
+    electronic_invoicing_enabled = models.BooleanField(
+        "Conectar un proveedor de facturación electrónica (DTE)", default=False,
+        help_text="Actívalo solo cuando tengas las credenciales de un proveedor certificado por el SAR.",
+    )
+    psa_provider_name = models.CharField("Proveedor certificado (PSA)", max_length=150, blank=True)
+    psa_api_url = models.CharField("URL del webservice del proveedor", max_length=255, blank=True)
+    psa_api_key = models.CharField("Clave / token de acceso", max_length=255, blank=True)
+
     updated_at = models.DateTimeField("Actualizado", auto_now=True)
 
     class Meta:

@@ -30,7 +30,14 @@
                 <td class="text-end text-danger fw-bold">L {{ row.balance|floatformat:2 }}</td>
                 <td class="text-end">L {{ row.limit|floatformat:2 }}</td>
                 <td class="text-end">L {{ row.available|floatformat:2 }}</td>
-                <td class="text-end"><a href="{% url 'clients:credit_payment_create' row.client.pk %}" class="btn btn-sm btn-outline-success">Registrar abono</a></td>
+                <td class="text-end">
+                    <a href="{% url 'clients:credit_payment_create' row.client.pk %}" class="btn btn-sm btn-outline-success">Registrar abono</a>
+                    {% with whatsapp_url=row.client.whatsapp_reminder_url %}
+                    {% if whatsapp_url %}
+                    <a href="{{ whatsapp_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success" title="Recordar por WhatsApp"><i class="bi bi-whatsapp"></i></a>
+                    {% endif %}
+                    {% endwith %}
+                </td>
             </tr>
         {% empty %}
             <tr><td colspan="5">

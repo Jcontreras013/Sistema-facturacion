@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Eliminar cotización{% endblock %}
+{% block content %}
+<div class="confirm-delete-wrap">
+<div class="card confirm-delete-card" style="max-width: 560px;">
+    <div class="confirm-delete-icon"><i class="bi bi-exclamation-triangle"></i></div>
+    <h2>Eliminar cotización</h2>
+    <p>¿Seguro que deseas eliminar la cotización <strong>{{ quote.number }}</strong>?</p>
+    <form method="post" class="confirm-delete-actions">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+        <a href="{% url 'sales:quote_detail' quote.pk %}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>
+</div>
+{% endblock %}

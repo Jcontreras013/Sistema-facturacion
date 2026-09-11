@@ -12,6 +12,11 @@
                 {% elif order.status == "enviada" %}<span class="badge bg-warning text-dark">Enviada</span>
                 {% elif order.status == "recibida" %}<span class="badge bg-success">Recibida</span>
                 {% else %}<span class="badge bg-danger">Cancelada</span>{% endif %}
+                {% if order.status == "enviada" or order.status == "recibida" %}
+                    {% if order.payment_status == "pagada" %}<span class="badge bg-success">Pagada</span>
+                    {% elif order.payment_status == "parcial" %}<span class="badge bg-warning text-dark">Pago parcial</span>
+                    {% else %}<span class="badge bg-danger">Sin pagar</span>{% endif %}
+                {% endif %}
             </p>
         </div>
     </div>
@@ -71,6 +76,35 @@
         {% endif %}
     </table>
 </div>
+
+{% if order.status == "enviada" or order.status == "recibida" %}
+<div class="card p-3 mb-3">
+    <div class="d-flex justify-content-between align-items-center">
+        <h6 class="card-section-title mb-0"><i class="bi bi-cash-coin"></i> Pagos al proveedor</h6>
+        {% if order.balance_due > 0 %}
+        <a href="{% url 'inventory:purchase_order_payment_create' order.pk %}" class="btn btn-sm btn-success"><i class="bi bi-plus-lg"></i> Registrar pago</a>
+        {% endif %}
+    </div>
+    <table class="table table-sm mb-0 mt-2">
+        <thead><tr><th>Fecha</th><th>Forma de pago</th><th>Notas</th><th class="text-end">Monto</th></tr></thead>
+        <tbody>
+        {% for payment in order.payments.all %}
+            <tr>
+                <td>{{ payment.created_at|date:"d/m/Y H:i" }}</td>
+                <td>{{ payment.get_payment_method_display }}</td>
+                <td>{{ payment.notes }}</td>
+                <td class="text-end">L {{ payment.amount|floatformat:2 }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="4" class="text-muted small">Todavía no se ha registrado ningún pago.</td></tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="fw-bold"><td colspan="3">Pagado / Saldo pendiente</td><td class="text-end">L {{ order.total_paid|floatformat:2 }} / <span class="text-danger">L {{ order.balance_due|floatformat:2 }}</span></td></tr>
+        </tfoot>
+    </table>
+</div>
+{% endif %}
 
 {% if order.status == "borrador" %}
 <div class="card p-3 mb-3">
@@ -160,7 +194,7 @@
     <form method="post" action="{% url 'inventory:purchase_order_receive' order.pk %}">
         {% csrf_token %}
         <table class="table table-sm">
-            <thead><tr><th>Producto</th><th>Pendiente</th><th>Cantidad recibida ahora</th></tr></thead>
+            <thead><tr><th>Producto</th><th>Pendiente</th><th>Cantidad recibida ahora</th><th>Vencimiento de este lote</th></tr></thead>
             <tbody>
             {% for item in order.items.all %}
                 {% if item.pending_quantity > 0 %}
@@ -171,11 +205,15 @@
                         <input type="hidden" name="item_id" value="{{ item.pk }}">
                         <input type="number" name="received_quantity" min="0" max="{{ item.pending_quantity }}" step="0.01" class="form-control form-control-sm" style="width:120px">
                     </td>
+                    <td>
+                        <input type="date" name="batch_expiration" class="form-control form-control-sm" style="width:160px">
+                    </td>
                 </tr>
                 {% endif %}
             {% endfor %}
             </tbody>
         </table>
+        <p class="small text-muted mb-2">La fecha de vencimiento es opcional y queda guardada por lote (no sobrescribe la del producto), para poder distinguir mercadería recibida en distintas fechas.</p>
         <button type="submit" class="btn btn-success"><i class="bi bi-check-circle"></i> Confirmar recepción</button>
     </form>
 </div>
