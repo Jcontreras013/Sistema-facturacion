@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Punto de venta{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-2">
-    <h2><i class="bi bi-cash-register"></i> Punto de venta</h2>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <h2 class="mb-0"><i class="bi bi-cash-register"></i> Punto de venta</h2>
     <span class="badge bg-success">Caja abierta desde {{ open_session.opened_at|date:"d/m/Y H:i" }}</span>
 </div>
 
@@ -89,8 +89,8 @@
             </div>
             <div id="productSearchResults" class="list-group position-absolute w-100 shadow-sm" style="z-index:1050; max-height:320px; overflow-y:auto; display:none;"></div>
         </div>
-        <div class="card" style="max-height: 70vh; overflow-y: auto;">
-            <table class="table table-sm table-hover align-middle mb-0">
+        <div class="card" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
+            <table class="table table-sm table-hover align-middle mb-0" style="min-width: 560px;">
                 <thead class="sticky-top bg-white">
                     <tr>
                         <th>Producto</th>

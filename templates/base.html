@@ -16,7 +16,7 @@
 </head>
 <body>
 {% if user.is_authenticated %}
-<nav class="navbar navbar-expand-lg navbar-dark app-navbar sticky-top">
+<nav class="navbar navbar-expand-xxl navbar-dark app-navbar sticky-top">
     <div class="container-fluid">
         <a class="navbar-brand fw-bold" href="{% url 'core:dashboard' %}"><span class="brand-badge"><i class="bi bi-shop"></i></span> Mini Market</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
@@ -29,15 +29,18 @@
                 <li class="nav-item"><a class="nav-link" href="{% url 'sales:sale_list' %}"><i class="bi bi-receipt"></i> Ventas</a></li>
                 <li class="nav-item"><a class="nav-link" href="{% url 'sales:quote_list' %}"><i class="bi bi-file-earmark-text"></i> Cotizaciones</a></li>
                 <li class="nav-item"><a class="nav-link" href="{% url 'inventory:product_list' %}"><i class="bi bi-box-seam"></i> Productos</a></li>
-                {% if is_admin %}
-                <li class="nav-item"><a class="nav-link" href="{% url 'inventory:category_list' %}"><i class="bi bi-tags"></i> Categorías</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'inventory:provider_list' %}"><i class="bi bi-truck"></i> Proveedores</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'inventory:purchase_order_list' %}"><i class="bi bi-cart-check"></i> Compras</a></li>
-                <li class="nav-item"><a class="nav-link" href="{% url 'inventory:inventory_count_list' %}"><i class="bi bi-clipboard-check"></i> Conteos</a></li>
-                {% endif %}
                 <li class="nav-item"><a class="nav-link" href="{% url 'clients:client_list' %}"><i class="bi bi-people"></i> Clientes</a></li>
                 <li class="nav-item"><a class="nav-link" href="{% url 'sales:cash_session_close' %}"><i class="bi bi-safe"></i> Caja</a></li>
                 {% if is_admin %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown"><i class="bi bi-boxes"></i> Inventario</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'inventory:category_list' %}">Categorías</a></li>
+                        <li><a class="dropdown-item" href="{% url 'inventory:provider_list' %}">Proveedores</a></li>
+                        <li><a class="dropdown-item" href="{% url 'inventory:purchase_order_list' %}">Compras</a></li>
+                        <li><a class="dropdown-item" href="{% url 'inventory:inventory_count_list' %}">Conteos</a></li>
+                    </ul>
+                </li>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown"><i class="bi bi-bar-chart"></i> Reportes</a>
                     <ul class="dropdown-menu">
