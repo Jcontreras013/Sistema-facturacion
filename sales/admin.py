@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CashSession, CreditNote, CreditNoteItem, HeldSale, Sale, SaleItem
+from .models import CashSession, CreditNote, CreditNoteItem, HeldSale, Quote, QuoteItem, Sale, SaleItem
 
 
 class SaleItemInline(admin.TabularInline):
@@ -39,3 +39,16 @@ class CreditNoteAdmin(admin.ModelAdmin):
     search_fields = ("number",)
     date_hierarchy = "created_at"
     inlines = [CreditNoteItemInline]
+
+
+class QuoteItemInline(admin.TabularInline):
+    model = QuoteItem
+    extra = 0
+
+
+@admin.register(Quote)
+class QuoteAdmin(admin.ModelAdmin):
+    list_display = ("number", "client", "status", "created_by", "created_at")
+    list_filter = ("status",)
+    search_fields = ("number",)
+    inlines = [QuoteItemInline]

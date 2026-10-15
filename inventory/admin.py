@@ -5,10 +5,12 @@ from .models import (
     InventoryCount,
     InventoryCountItem,
     Product,
+    ProductBatch,
     Promotion,
     Provider,
     PurchaseOrder,
     PurchaseOrderItem,
+    PurchaseOrderPayment,
     StockMovement,
 )
 
@@ -48,12 +50,23 @@ class PurchaseOrderItemInline(admin.TabularInline):
     extra = 0
 
 
+class PurchaseOrderPaymentInline(admin.TabularInline):
+    model = PurchaseOrderPayment
+    extra = 0
+
+
 @admin.register(PurchaseOrder)
 class PurchaseOrderAdmin(admin.ModelAdmin):
     list_display = ("number", "provider", "status", "created_by", "created_at")
     list_filter = ("status",)
     search_fields = ("number",)
-    inlines = [PurchaseOrderItemInline]
+    inlines = [PurchaseOrderItemInline, PurchaseOrderPaymentInline]
+
+
+@admin.register(PurchaseOrderPayment)
+class PurchaseOrderPaymentAdmin(admin.ModelAdmin):
+    list_display = ("purchase_order", "amount", "payment_method", "user", "created_at")
+    list_filter = ("payment_method",)
 
 
 class InventoryCountItemInline(admin.TabularInline):
@@ -73,3 +86,10 @@ class StockMovementAdmin(admin.ModelAdmin):
     list_display = ("product", "movement_type", "reason_category", "quantity", "user", "created_at")
     list_filter = ("movement_type", "reason_category")
     date_hierarchy = "created_at"
+
+
+@admin.register(ProductBatch)
+class ProductBatchAdmin(admin.ModelAdmin):
+    list_display = ("product", "quantity_received", "expiration_date", "received_at")
+    list_filter = ("expiration_date",)
+    search_fields = ("product__name", "product__code")

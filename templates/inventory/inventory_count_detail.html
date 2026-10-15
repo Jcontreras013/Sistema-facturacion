@@ -32,7 +32,8 @@
     {% csrf_token %}
 {% endif %}
 <div class="card p-3">
-    <table class="table table-sm mb-0">
+    <div class="table-responsive">
+<table class="table table-sm mb-0">
         <thead><tr><th>Producto</th><th class="text-end">Sistema</th><th class="text-end">Contado</th><th class="text-end">Diferencia</th></tr></thead>
         <tbody>
         {% for item in items %}
@@ -64,6 +65,7 @@
         {% endfor %}
         </tbody>
     </table>
+</div>
 </div>
 {% if count.status == "abierto" %}
     <button type="submit" class="btn btn-primary mt-3"><i class="bi bi-save"></i> Guardar conteo</button>

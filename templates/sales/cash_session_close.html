@@ -13,13 +13,15 @@
 <div class="row g-4">
     <div class="col-md-5">
         <div class="card p-3">
-            <table class="table table-sm mb-0">
+            <div class="table-responsive">
+<table class="table table-sm mb-0">
                 <tr><th>Abierta por</th><td>{{ session.opened_by }}</td></tr>
                 <tr><th>Apertura</th><td>{{ session.opened_at|date:"d/m/Y H:i" }}</td></tr>
                 <tr><th>Monto inicial</th><td>L {{ session.opening_amount|floatformat:2 }}</td></tr>
                 <tr><th>Ventas en efectivo</th><td>L {{ session.cash_sales_total|floatformat:2 }}</td></tr>
                 <tr><th>Monto esperado</th><td><strong>L {{ expected|floatformat:2 }}</strong></td></tr>
             </table>
+</div>
         </div>
     </div>
     <div class="col-md-7">

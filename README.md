@@ -32,6 +32,7 @@ Aplicación web construida con Django para administrar un mini market: punto de 
 ## Requisitos
 
 - Python 3.11+
+- PostgreSQL (recomendado para desarrollo local, para que se comporte igual que producción) — también funciona con SQLite sin configurar nada, ver abajo.
 
 ## Instalación
 
@@ -39,7 +40,25 @@ Aplicación web construida con Django para administrar un mini market: punto de 
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+```
 
+**Base de datos:** por defecto, si no defines `DATABASE_URL`, el sistema usa SQLite (`db.sqlite3`) sin ningún paso extra — ideal para probar rápido. Para desarrollar con PostgreSQL local (recomendado, mismo motor que producción):
+
+```bash
+# Crea el rol y la base (una sola vez)
+sudo -u postgres psql -c "CREATE USER minimarket WITH PASSWORD 'minimarket' SUPERUSER;"
+sudo -u postgres psql -c "CREATE DATABASE minimarket OWNER minimarket;"
+
+# Crea un .env local (NO se sube a git, ver .gitignore) con la conexión
+cat > .env <<'EOF'
+DATABASE_URL=postgres://minimarket:minimarket@localhost:5432/minimarket
+DEBUG=True
+EOF
+```
+
+El `.env` se carga solo (vía `python-dotenv`) cada vez que corres `manage.py`; en Render las variables de entorno ya vienen del panel y este archivo no las pisa.
+
+```bash
 python manage.py migrate
 python manage.py seed_groups        # crea los grupos "Supervisor" y "Caja"
 python manage.py createsuperuser    # tu usuario Admin (creador del sistema, protegido)

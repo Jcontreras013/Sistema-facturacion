@@ -7,7 +7,7 @@ from django.shortcuts import render
 
 from clients.models import Client
 from core.permissions import admin_required
-from inventory.models import Product
+from inventory.models import Product, ProductBatch, PurchaseOrder
 from sales.models import CashSession, CreditNoteItem, Sale, SaleItem
 
 from .exports import xlsx_response
@@ -170,6 +170,35 @@ def expiring_products_report(request):
         )
 
     return render(request, "reports/expiring_products_report.html", {"products": expiring})
+
+
+@admin_required
+def batch_expiration_report(request):
+    """Lotes de compra (con fecha de vencimiento propia) vencidos o por vencer en 30 días."""
+    batches = ProductBatch.objects.filter(expiration_date__isnull=False).select_related("product").order_by(
+        "expiration_date"
+    )
+    rows = [b for b in batches if b.is_expiring_soon or b.is_expired]
+
+    if request.GET.get("export") == "xlsx":
+        xlsx_rows = [
+            (
+                b.product.code,
+                b.product.name,
+                float(b.quantity_received),
+                b.expiration_date.strftime("%d/%m/%Y"),
+                "Vencido" if b.is_expired else "Por vencer",
+            )
+            for b in rows
+        ]
+        return xlsx_response(
+            "lotes_por_vencer.xlsx",
+            ["Código", "Producto", "Cantidad del lote", "Vencimiento", "Estado"],
+            xlsx_rows,
+            "Lotes por vencer",
+        )
+
+    return render(request, "reports/batch_expiration_report.html", {"batches": rows})
 
 
 @admin_required
@@ -341,4 +370,44 @@ def accounts_receivable_report(request):
         request,
         "reports/accounts_receivable_report.html",
         {"rows": rows, "total_receivable": total_receivable},
+    )
+
+
+@admin_required
+def accounts_payable_report(request):
+    """Órdenes de compra con saldo pendiente de pago a proveedores."""
+    rows = []
+    total_payable = Decimal("0")
+    orders = PurchaseOrder.objects.filter(status__in=["enviada", "recibida"]).select_related("provider")
+    for order in orders:
+        balance = order.balance_due
+        if balance > 0:
+            total_payable += balance
+            rows.append(
+                {
+                    "order": order,
+                    "total": order.total_cost,
+                    "paid": order.total_paid,
+                    "balance": balance,
+                }
+            )
+    rows.sort(key=lambda r: r["balance"], reverse=True)
+
+    if request.GET.get("export") == "xlsx":
+        xlsx_rows = [
+            (row["order"].number, row["order"].provider.name, float(row["total"]), float(row["paid"]), float(row["balance"]))
+            for row in rows
+        ]
+        xlsx_rows.append(("", "TOTAL", "", "", float(total_payable)))
+        return xlsx_response(
+            "cuentas_por_pagar.xlsx",
+            ["Orden", "Proveedor", "Total (L)", "Pagado (L)", "Saldo (L)"],
+            xlsx_rows,
+            "Cuentas por pagar",
+        )
+
+    return render(
+        request,
+        "reports/accounts_payable_report.html",
+        {"rows": rows, "total_payable": total_payable},
     )

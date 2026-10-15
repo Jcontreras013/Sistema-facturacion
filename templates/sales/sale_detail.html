@@ -20,6 +20,15 @@
                 {% endif %}
                 {% if sale.is_contingency %}<span class="badge bg-warning text-dark">Emitida en contingencia (sin internet)</span>{% endif %}
             </div>
+            {% if sale.dte_status != "no_aplica" %}
+            <div class="no-print mt-1">
+                {% if sale.dte_status == "aceptada" %}<span class="badge bg-success">DTE aceptado por el SAR</span>
+                {% elif sale.dte_status == "rechazada" %}<span class="badge bg-danger">DTE rechazado por el SAR</span>
+                {% elif sale.dte_status == "enviada" %}<span class="badge bg-warning text-dark">DTE enviado, esperando respuesta</span>
+                {% elif sale.dte_status == "pendiente" %}<span class="badge bg-secondary">DTE pendiente de envío</span>
+                {% else %}<span class="badge bg-secondary" title="Régimen CFE sin proveedor certificado conectado">DTE: sin proveedor conectado</span>{% endif %}
+            </div>
+            {% endif %}
         </div>
     </div>
     <hr>
@@ -37,7 +46,8 @@
         </div>
     </div>
 
-    <table class="table">
+    <div class="table-responsive">
+<table class="table">
         <thead><tr><th>Producto</th><th>Cantidad</th><th class="col-unit-price">Precio unit.</th><th class="col-optional">ISV</th><th class="text-end">Subtotal</th></tr></thead>
         <tbody>
         {% for item in sale.items.all %}
@@ -51,6 +61,7 @@
         {% endfor %}
         </tbody>
     </table>
+</div>
 
     <div class="row justify-content-end">
         <div class="col-md-4">
@@ -89,7 +100,8 @@
 {% if sale.credit_notes.all %}
 <div class="invoice-box card p-4 mt-3 no-print">
     <h6>Notas de crédito relacionadas</h6>
-    <table class="table table-sm mb-0">
+    <div class="table-responsive">
+<table class="table table-sm mb-0">
         <thead><tr><th>No.</th><th>Fecha</th><th>Motivo</th><th>Total</th><th></th></tr></thead>
         <tbody>
         {% for cn in sale.credit_notes.all %}
@@ -108,6 +120,7 @@
         </tbody>
     </table>
 </div>
+</div>
 {% endif %}
 
 {% if sale.status == "completada" %}
@@ -115,7 +128,8 @@
     <h6><i class="bi bi-arrow-return-left"></i> Registrar devolución (nota de crédito)</h6>
     <form method="post" action="{% url 'sales:credit_note_create' sale.pk %}">
         {% csrf_token %}
-        <table class="table table-sm">
+        <div class="table-responsive">
+<table class="table table-sm">
             <thead><tr><th>Producto</th><th>Vendido</th><th>Disponible a devolver</th><th>Cantidad a devolver</th></tr></thead>
             <tbody>
             {% for item in sale.items.all %}
@@ -132,6 +146,7 @@
             {% endfor %}
             </tbody>
         </table>
+</div>
         <div class="mb-3">
             <label class="form-label">Motivo de la devolución</label>
             <input type="text" name="reason" class="form-control" required placeholder="Ej. producto en mal estado, cliente se arrepintió...">

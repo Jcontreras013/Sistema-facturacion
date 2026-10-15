@@ -13,25 +13,36 @@
 <div class="row g-4">
     <div class="col-md-4">
         <div class="card p-3">
-            <table class="table table-sm mb-0">
+            <div class="table-responsive">
+<table class="table table-sm mb-0">
                 <tr><th>Documento</th><td>{{ client.document|default:"—" }}</td></tr>
                 <tr><th>Teléfono</th><td>{{ client.phone|default:"—" }}</td></tr>
                 <tr><th>Correo</th><td>{{ client.email|default:"—" }}</td></tr>
                 <tr><th>Dirección</th><td>{{ client.address|default:"—" }}</td></tr>
             </table>
+</div>
             <a href="{% url 'clients:client_update' client.pk %}" class="btn btn-outline-secondary btn-sm mt-2"><i class="bi bi-pencil"></i> Editar</a>
         </div>
 
         {% if client.has_credit_enabled or credit_balance > 0 %}
         <div class="card p-3 mt-3">
             <h6><i class="bi bi-wallet2"></i> Crédito (fiado)</h6>
-            <table class="table table-sm mb-2">
+            <div class="table-responsive">
+<table class="table table-sm mb-2">
                 <tr><th>Límite</th><td>L {{ client.credit_limit|floatformat:2 }}</td></tr>
                 <tr><th>Debe</th><td class="{% if credit_balance > 0 %}text-danger fw-bold{% endif %}">L {{ credit_balance|floatformat:2 }}</td></tr>
                 <tr><th>Disponible</th><td>L {{ credit_available|floatformat:2 }}</td></tr>
             </table>
+</div>
             {% if credit_balance > 0 %}
             <a href="{% url 'clients:credit_payment_create' client.pk %}" class="btn btn-success btn-sm"><i class="bi bi-cash"></i> Registrar abono</a>
+            {% with whatsapp_url=client.whatsapp_reminder_url %}
+            {% if whatsapp_url %}
+            <a href="{{ whatsapp_url }}" target="_blank" rel="noopener" class="btn btn-outline-success btn-sm"><i class="bi bi-whatsapp"></i> Recordar por WhatsApp</a>
+            {% else %}
+            <span class="d-block small text-muted mt-2">Agrega un teléfono al cliente para poder enviarle un recordatorio por WhatsApp.</span>
+            {% endif %}
+            {% endwith %}
             {% endif %}
         </div>
         {% endif %}
@@ -43,7 +54,8 @@
             <div class="row">
                 <div class="col-md-6">
                     <div class="small text-muted mb-1">Ventas al crédito</div>
-                    <table class="table table-sm">
+                    <div class="table-responsive">
+<table class="table table-sm">
                         <thead><tr><th>No.</th><th>Fecha</th><th>Total</th></tr></thead>
                         <tbody>
                         {% for sale in credit_sales %}
@@ -57,10 +69,12 @@
                         {% endfor %}
                         </tbody>
                     </table>
+</div>
                 </div>
                 <div class="col-md-6">
                     <div class="small text-muted mb-1">Abonos registrados</div>
-                    <table class="table table-sm">
+                    <div class="table-responsive">
+<table class="table table-sm">
                         <thead><tr><th>Fecha</th><th>Monto</th><th>Forma</th></tr></thead>
                         <tbody>
                         {% for payment in payments %}
@@ -74,13 +88,15 @@
                         {% endfor %}
                         </tbody>
                     </table>
+</div>
                 </div>
             </div>
         </div>
         {% endif %}
         <div class="card p-3">
             <h6>Historial de compras</h6>
-            <table class="table table-sm">
+            <div class="table-responsive">
+<table class="table table-sm">
                 <thead><tr><th>No.</th><th>Fecha</th><th>Total</th><th>Estado</th></tr></thead>
                 <tbody>
                 {% for sale in sales %}
@@ -95,6 +111,7 @@
                 {% endfor %}
                 </tbody>
             </table>
+</div>
         </div>
     </div>
 </div>

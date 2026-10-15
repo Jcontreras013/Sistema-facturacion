@@ -105,6 +105,32 @@ class Sale(models.Model):
         settings.AUTH_USER_MODEL, verbose_name="Descuento autorizado por", on_delete=models.SET_NULL,
         null=True, blank=True, related_name="authorized_discounts",
     )
+
+    # Estado de facturación electrónica (DTE) ante el SAR. Ver sales/dte.py: hoy ningún
+    # proveedor certificado está conectado, así que el estado real de toda venta con
+    # régimen CFE es "sin_conectar" — nunca se marca como enviada/aceptada sin que
+    # eso haya pasado de verdad con un proveedor real.
+    DTE_NO_APLICA = "no_aplica"
+    DTE_SIN_CONECTAR = "sin_conectar"
+    DTE_PENDIENTE = "pendiente"
+    DTE_ENVIADA = "enviada"
+    DTE_ACEPTADA = "aceptada"
+    DTE_RECHAZADA = "rechazada"
+    DTE_STATUS_CHOICES = [
+        (DTE_NO_APLICA, "No aplica (régimen CAI impreso)"),
+        (DTE_SIN_CONECTAR, "Sin proveedor certificado conectado"),
+        (DTE_PENDIENTE, "Pendiente de envío al SAR"),
+        (DTE_ENVIADA, "Enviada al proveedor certificado"),
+        (DTE_ACEPTADA, "Aceptada por el SAR"),
+        (DTE_RECHAZADA, "Rechazada por el SAR"),
+    ]
+    dte_status = models.CharField(
+        "Estado de facturación electrónica", max_length=15, choices=DTE_STATUS_CHOICES, default=DTE_NO_APLICA
+    )
+    dte_uuid = models.CharField("Clave del DTE", max_length=100, blank=True)
+    dte_qr_data = models.TextField("Contenido del código QR del DTE", blank=True)
+    dte_sent_at = models.DateTimeField("Enviada al SAR", null=True, blank=True)
+
     created_at = models.DateTimeField("Fecha", auto_now_add=True)
 
     class Meta:
@@ -122,7 +148,18 @@ class Sale(models.Model):
         if not self.number:
             company = Company.load()
             self.number = company.reserve_next_invoice_number()
+            self.dte_status = self._initial_dte_status(company)
         super().save(*args, **kwargs)
+
+    @staticmethod
+    def _initial_dte_status(company):
+        from .dte import get_provider
+
+        if company.invoice_regime != Company.REGIME_CFE:
+            return Sale.DTE_NO_APLICA
+        if get_provider(company).is_connected():
+            return Sale.DTE_PENDIENTE
+        return Sale.DTE_SIN_CONECTAR
 
     def recalculate_totals(self):
         items = list(self.items.all())
@@ -252,3 +289,89 @@ class CreditNoteItem(models.Model):
     @property
     def tax_amount(self):
         return self.subtotal * (self.tax_rate / Decimal("100"))
+
+
+class Quote(models.Model):
+    STATUS_CHOICES = [
+        ("borrador", "Borrador"),
+        ("enviada", "Enviada al cliente"),
+        ("convertida", "Convertida a venta"),
+        ("cancelada", "Cancelada"),
+    ]
+
+    number = models.CharField("No. de cotización", max_length=20, unique=True, blank=True)
+    client = models.ForeignKey(
+        Client, verbose_name="Cliente", on_delete=models.SET_NULL, null=True, blank=True, related_name="quotes"
+    )
+    status = models.CharField("Estado", max_length=15, choices=STATUS_CHOICES, default="borrador")
+    valid_until = models.DateField("Válida hasta", null=True, blank=True)
+    notes = models.CharField("Notas", max_length=255, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Creada por", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    created_at = models.DateTimeField("Creada", auto_now_add=True)
+    converted_at = models.DateTimeField("Convertida a venta", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Cotización"
+        verbose_name_plural = "Cotizaciones"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.number or f"COT-{self.pk}"
+
+    def save(self, *args, **kwargs):
+        if not self.number:
+            last = Quote.objects.order_by("-id").first()
+            next_id = (last.id + 1) if last else 1
+            self.number = f"COT-{next_id:06d}"
+        super().save(*args, **kwargs)
+
+    @property
+    def subtotal(self):
+        return sum((item.subtotal for item in self.items.all()), Decimal("0"))
+
+    @property
+    def tax(self):
+        return sum((item.tax_amount for item in self.items.all()), Decimal("0")).quantize(Decimal("0.01"))
+
+    @property
+    def total(self):
+        return self.subtotal + self.tax
+
+    @property
+    def is_expired(self):
+        import datetime
+
+        return bool(
+            self.valid_until and self.status == "enviada" and datetime.date.today() > self.valid_until
+        )
+
+
+class QuoteItem(models.Model):
+    quote = models.ForeignKey(Quote, on_delete=models.CASCADE, related_name="items")
+    product = models.ForeignKey(
+        Product, verbose_name="Producto", on_delete=models.PROTECT, related_name="quote_items"
+    )
+    quantity = models.DecimalField("Cantidad", max_digits=10, decimal_places=2)
+    unit_price = models.DecimalField("Precio unitario", max_digits=10, decimal_places=2)
+    tax_rate = models.DecimalField("Tasa de ISV (%)", max_digits=5, decimal_places=2, default=Decimal("15.00"))
+
+    class Meta:
+        verbose_name = "Detalle de cotización"
+        verbose_name_plural = "Detalles de cotización"
+
+    def __str__(self):
+        return f"{self.product.name} x {self.quantity}"
+
+    @property
+    def subtotal(self):
+        return self.quantity * self.unit_price
+
+    @property
+    def tax_amount(self):
+        return (self.subtotal * self.tax_rate / Decimal("100")).quantize(Decimal("0.01"))
+
+    @property
+    def total(self):
+        return self.subtotal + self.tax_amount

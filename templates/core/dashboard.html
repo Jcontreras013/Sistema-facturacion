@@ -66,7 +66,8 @@
     <div class="col-md-6">
         <div class="card p-3">
             <h5><i class="bi bi-receipt-cutoff text-success"></i> Últimas ventas</h5>
-            <table class="table table-sm">
+            <div class="table-responsive">
+<table class="table table-sm">
                 <thead><tr><th>No.</th><th>Cliente</th><th>Total</th><th></th></tr></thead>
                 <tbody>
                 {% for sale in recent_sales %}
@@ -86,12 +87,14 @@
                 {% endfor %}
                 </tbody>
             </table>
+</div>
         </div>
     </div>
     <div class="col-md-6">
         <div class="card p-3">
             <h5><i class="bi bi-box-seam text-warning"></i> Productos con stock bajo</h5>
-            <table class="table table-sm">
+            <div class="table-responsive">
+<table class="table table-sm">
                 <thead><tr><th>Producto</th><th>Stock</th><th>Mínimo</th></tr></thead>
                 <tbody>
                 {% for product in low_stock_products %}
@@ -110,6 +113,7 @@
                 {% endfor %}
                 </tbody>
             </table>
+</div>
         </div>
     </div>
 </div>

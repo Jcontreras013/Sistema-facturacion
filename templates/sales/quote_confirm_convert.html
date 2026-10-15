@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Convertir cotización a venta{% endblock %}
+{% block content %}
+<div class="confirm-delete-wrap">
+<div class="card confirm-delete-card" style="max-width: 560px;">
+    <div class="confirm-delete-icon text-success"><i class="bi bi-cart-check"></i></div>
+    <h2>Convertir a venta</h2>
+    <p>Vas a llevar los {{ quote.items.count }} producto(s) de la cotización <strong>{{ quote.number }}</strong>
+       (total L {{ quote.total|floatformat:2 }}) al punto de venta para cobrarla.</p>
+    <div class="alert alert-info text-start">Se abrirá el POS con el carrito ya cargado. Necesitas tener la caja abierta para cobrar. Los precios se recalculan con el catálogo vigente al momento de cobrar.</div>
+    <form method="post" class="confirm-delete-actions">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success">Sí, ir al punto de venta</button>
+        <a href="{% url 'sales:quote_detail' quote.pk %}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>
+</div>
+{% endblock %}

@@ -14,9 +14,15 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Carga variables de desarrollo local desde .env (no se sube a git — ver .gitignore).
+# En Render las variables ya vienen del entorno, así que esto no las pisa: load_dotenv()
+# nunca sobrescribe una variable que ya existe en el entorno.
+load_dotenv(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production

@@ -91,15 +91,38 @@
             </div>
         </div>
 
-        {% if company.invoice_regime == "cfe" %}
-        <div class="alert alert-warning">
-            El régimen de Factura Electrónica (CFE) todavía usa una numeración interna simple en este sistema;
-            la integración real con el webservice del SAR para timbrado electrónico no está implementada aún.
-        </div>
-        {% endif %}
-
         <div class="mt-3">
             <span class="badge bg-info">Facturas restantes en el rango: {{ company.range_remaining }}</span>
+        </div>
+
+        <hr>
+        <h6>Facturación electrónica (DTE)</h6>
+        <div class="alert alert-warning">
+            <strong>Sin proveedor certificado conectado.</strong> El SAR exige que el timbrado electrónico
+            (firma digital, envío en tiempo real y código QR) se haga a través de un Proveedor de Servicios
+            Autorizado (PSA). Este sistema todavía no tiene ninguno conectado: con régimen CFE, las facturas
+            usan una numeración interna simple, no un timbrado real ante el SAR. Los campos de abajo guardan
+            la conexión para cuando contrates un PSA — activarlos sin credenciales reales no habilita nada.
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-12">
+                <div class="form-check">
+                    {{ form.electronic_invoicing_enabled }}
+                    <label class="form-check-label">{{ form.electronic_invoicing_enabled.label }}</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.psa_provider_name.label }}</label>
+                {{ form.psa_provider_name }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.psa_api_url.label }}</label>
+                {{ form.psa_api_url }}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.psa_api_key.label }}</label>
+                {{ form.psa_api_key }}
+            </div>
         </div>
 
         <hr>

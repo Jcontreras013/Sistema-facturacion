@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
+from django.db.models import Sum
 from django.urls import reverse
 
 
@@ -272,6 +273,53 @@ class PurchaseOrder(models.Model):
         items = list(self.items.all())
         return bool(items) and all(item.quantity_received >= item.quantity_ordered for item in items)
 
+    @property
+    def total_paid(self):
+        return self.payments.aggregate(t=Sum("amount"))["t"] or Decimal("0")
+
+    @property
+    def balance_due(self):
+        due = self.total_cost - self.total_paid
+        return due if due > 0 else Decimal("0")
+
+    @property
+    def payment_status(self):
+        """pendiente / parcial / pagada — solo tiene sentido una vez que la orden tiene costo."""
+        if self.total_cost <= 0:
+            return "pendiente"
+        if self.total_paid <= 0:
+            return "pendiente"
+        if self.balance_due <= 0:
+            return "pagada"
+        return "parcial"
+
+
+class PurchaseOrderPayment(models.Model):
+    PAYMENT_METHODS = [
+        ("efectivo", "Efectivo"),
+        ("transferencia", "Transferencia"),
+        ("cheque", "Cheque"),
+    ]
+
+    purchase_order = models.ForeignKey(
+        PurchaseOrder, verbose_name="Orden de compra", on_delete=models.CASCADE, related_name="payments"
+    )
+    amount = models.DecimalField("Monto pagado", max_digits=12, decimal_places=2)
+    payment_method = models.CharField("Forma de pago", max_length=20, choices=PAYMENT_METHODS, default="efectivo")
+    notes = models.CharField("Notas", max_length=255, blank=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="Registrado por", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    created_at = models.DateTimeField("Fecha", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Pago a proveedor"
+        verbose_name_plural = "Pagos a proveedores"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Pago de L {self.amount} — {self.purchase_order.number}"
+
 
 class PurchaseOrderItem(models.Model):
     purchase_order = models.ForeignKey(PurchaseOrder, on_delete=models.CASCADE, related_name="items")
@@ -296,6 +344,41 @@ class PurchaseOrderItem(models.Model):
     @property
     def pending_quantity(self):
         return self.quantity_ordered - self.quantity_received
+
+
+class ProductBatch(models.Model):
+    """Trazabilidad por lote: cada recepción de mercancía con fecha de vencimiento propia
+    queda registrada aparte, sin importar que el stock del producto siga siendo un solo total
+    (el descuento por venta sigue siendo agregado, no por lote)."""
+
+    product = models.ForeignKey(Product, verbose_name="Producto", on_delete=models.CASCADE, related_name="batches")
+    purchase_order_item = models.ForeignKey(
+        PurchaseOrderItem, verbose_name="Línea de orden de compra", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="batches",
+    )
+    quantity_received = models.DecimalField("Cantidad recibida en este lote", max_digits=10, decimal_places=2)
+    expiration_date = models.DateField("Fecha de vencimiento del lote", null=True, blank=True)
+    notes = models.CharField("Notas", max_length=255, blank=True)
+    received_at = models.DateTimeField("Recibido", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Lote de producto"
+        verbose_name_plural = "Lotes de producto"
+        ordering = ["expiration_date", "-received_at"]
+
+    def __str__(self):
+        return f"Lote #{self.pk} — {self.product.name}"
+
+    @property
+    def is_expired(self):
+        return bool(self.expiration_date and self.expiration_date < datetime.date.today())
+
+    @property
+    def is_expiring_soon(self):
+        if not self.expiration_date:
+            return False
+        delta = (self.expiration_date - datetime.date.today()).days
+        return 0 <= delta <= 30
 
 
 class InventoryCount(models.Model):

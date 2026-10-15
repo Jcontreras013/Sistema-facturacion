@@ -2,7 +2,7 @@ import uuid
 
 from django import forms
 
-from .models import Category, Product, Promotion, PurchaseOrder, Provider, StockMovement
+from .models import Category, Product, Promotion, PurchaseOrder, PurchaseOrderPayment, Provider, StockMovement
 
 
 class CategoryForm(forms.ModelForm):
@@ -125,6 +125,17 @@ class PurchaseOrderForm(forms.ModelForm):
         widgets = {
             "provider": forms.Select(attrs={"class": "form-select"}),
             "notes": forms.TextInput(attrs={"class": "form-control", "placeholder": "Notas (opcional)"}),
+        }
+
+
+class PurchaseOrderPaymentForm(forms.ModelForm):
+    class Meta:
+        model = PurchaseOrderPayment
+        fields = ["amount", "payment_method", "notes"]
+        widgets = {
+            "amount": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0.01", "autofocus": True}),
+            "payment_method": forms.Select(attrs={"class": "form-select"}),
+            "notes": forms.TextInput(attrs={"class": "form-control", "placeholder": "No. de cheque, referencia, etc. (opcional)"}),
         }
 
 

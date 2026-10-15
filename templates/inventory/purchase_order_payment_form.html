@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Registrar pago — {{ order.number }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-header-title">
+        <div class="page-header-icon"><i class="bi bi-cash"></i></div>
+        <div>
+            <h2>Registrar pago</h2>
+            <p class="page-header-subtitle">Orden: <strong>{{ order.number }}</strong> ({{ order.provider.name }}) — Saldo pendiente actual: <strong>L {{ balance|floatformat:2 }}</strong></p>
+        </div>
+    </div>
+</div>
+<div class="card p-4" style="max-width: 500px;">
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">{{ form.amount.label }}</label>
+            {{ form.amount }}
+        </div>
+        <div class="mb-3">
+            <label class="form-label">{{ form.payment_method.label }}</label>
+            {{ form.payment_method }}
+        </div>
+        <div class="mb-3">
+            <label class="form-label">{{ form.notes.label }}</label>
+            {{ form.notes }}
+        </div>
+        <button type="submit" class="btn btn-success"><i class="bi bi-check-circle"></i> Registrar pago</button>
+        <a href="{% url 'inventory:purchase_order_detail' order.pk %}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

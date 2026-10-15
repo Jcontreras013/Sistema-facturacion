@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.dateparse import parse_date
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from core.audit import log_action
@@ -16,7 +17,15 @@ from core.permissions import admin_required
 
 from django.db import transaction
 
-from .forms import CategoryForm, ProductForm, PromotionForm, PurchaseOrderForm, ProviderForm, StockMovementForm
+from .forms import (
+    CategoryForm,
+    ProductForm,
+    PromotionForm,
+    PurchaseOrderForm,
+    PurchaseOrderPaymentForm,
+    ProviderForm,
+    StockMovementForm,
+)
 from .importers import (
     PRODUCT_FIELDS,
     detect_column_mapping,
@@ -33,9 +42,11 @@ from .models import (
     InventoryCountItem,
     Product,
     Promotion,
+    ProductBatch,
     Provider,
     PurchaseOrder,
     PurchaseOrderItem,
+    PurchaseOrderPayment,
     StockMovement,
 )
 
@@ -119,6 +130,7 @@ def product_delete(request, pk):
 def product_detail(request, pk):
     product = get_object_or_404(Product, pk=pk)
     movements = product.movements.all()[:20]
+    batches = product.batches.all()[:20]
     if request.method == "POST":
         form = StockMovementForm(request.POST)
         if form.is_valid():
@@ -134,7 +146,7 @@ def product_detail(request, pk):
     return render(
         request,
         "inventory/product_detail.html",
-        {"product": product, "movements": movements, "form": form},
+        {"product": product, "movements": movements, "batches": batches, "form": form},
     )
 
 
@@ -381,8 +393,9 @@ def purchase_order_receive(request, pk):
     if request.method == "POST" and order.status in ("enviada", "recibida"):
         item_ids = request.POST.getlist("item_id")
         received_quantities = request.POST.getlist("received_quantity")
+        batch_expirations = request.POST.getlist("batch_expiration")
         with transaction.atomic():
-            for item_id, qty_raw in zip(item_ids, received_quantities):
+            for item_id, qty_raw, expiration_raw in zip(item_ids, received_quantities, batch_expirations):
                 qty_raw = (qty_raw or "").strip()
                 if not qty_raw:
                     continue
@@ -406,6 +419,12 @@ def purchase_order_receive(request, pk):
                 )
                 item.quantity_received += new_amount
                 item.save(update_fields=["quantity_received"])
+                ProductBatch.objects.create(
+                    product=item.product,
+                    purchase_order_item=item,
+                    quantity_received=new_amount,
+                    expiration_date=parse_date((expiration_raw or "").strip()) or None,
+                )
 
             order.refresh_from_db()
             if order.is_fully_received:
@@ -417,6 +436,39 @@ def purchase_order_receive(request, pk):
         log_action(request.user, "updated", order, extra="Mercancía recibida")
         messages.success(request, "Recepción de mercancía registrada. El stock ya fue actualizado.")
     return redirect("inventory:purchase_order_detail", pk=order.pk)
+
+
+@admin_required
+def purchase_order_payment_create(request, pk):
+    order = get_object_or_404(PurchaseOrder, pk=pk)
+    if order.status not in ("enviada", "recibida"):
+        messages.error(request, "Solo puedes registrar pagos sobre órdenes enviadas o recibidas.")
+        return redirect("inventory:purchase_order_detail", pk=order.pk)
+    if request.method == "POST":
+        form = PurchaseOrderPaymentForm(request.POST)
+        if form.is_valid():
+            amount = form.cleaned_data["amount"]
+            balance = order.balance_due
+            if amount > balance:
+                messages.error(
+                    request,
+                    f"El pago (L {amount:.2f}) es mayor que el saldo pendiente de la orden (L {balance:.2f}).",
+                )
+            else:
+                payment = form.save(commit=False)
+                payment.purchase_order = order
+                payment.user = request.user
+                payment.save()
+                log_action(request.user, "created", payment)
+                messages.success(request, f"Pago de L {amount:.2f} registrado para la orden {order.number}.")
+                return redirect("inventory:purchase_order_detail", pk=order.pk)
+    else:
+        form = PurchaseOrderPaymentForm()
+    return render(
+        request,
+        "inventory/purchase_order_payment_form.html",
+        {"form": form, "order": order, "balance": order.balance_due},
+    )
 
 
 @admin_required

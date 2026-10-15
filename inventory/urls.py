@@ -34,6 +34,7 @@ urlpatterns = [
     ),
     path("ordenes-compra/<int:pk>/enviar/", views.purchase_order_send, name="purchase_order_send"),
     path("ordenes-compra/<int:pk>/recibir/", views.purchase_order_receive, name="purchase_order_receive"),
+    path("ordenes-compra/<int:pk>/pago/", views.purchase_order_payment_create, name="purchase_order_payment_create"),
     path("ordenes-compra/<int:pk>/cancelar/", views.purchase_order_cancel, name="purchase_order_cancel"),
     path("ordenes-compra/<int:pk>/eliminar/", views.purchase_order_delete, name="purchase_order_delete"),
     path("conteos/", views.inventory_count_list, name="inventory_count_list"),

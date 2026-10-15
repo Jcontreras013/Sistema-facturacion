@@ -48,6 +48,31 @@ class Client(models.Model):
     def has_credit_enabled(self):
         return self.credit_limit > 0
 
+    def whatsapp_reminder_url(self):
+        """Enlace de WhatsApp con un recordatorio de cobro prellenado para este cliente.
+        No usa ninguna API ni credencial: solo arma la URL de wa.me con el mensaje ya
+        escrito, lista para que el negocio la revise y la envíe manualmente."""
+        balance = self.credit_balance()
+        if balance <= 0 or not self.phone:
+            return None
+        digits = "".join(ch for ch in self.phone if ch.isdigit())
+        if not digits:
+            return None
+        if len(digits) <= 8:
+            digits = "504" + digits
+
+        from urllib.parse import quote
+
+        from core.models import Company
+
+        company = Company.load()
+        business = company.trade_name or company.business_name or "el negocio"
+        message = (
+            f"Hola {self.name}, le saludamos de {business}. Le recordamos que tiene un saldo "
+            f"pendiente de L {balance:.2f}. Cuando pueda pasar a abonar, con gusto le atendemos. ¡Gracias!"
+        )
+        return f"https://wa.me/{digits}?text={quote(message)}"
+
 
 class CreditPayment(models.Model):
     PAYMENT_METHODS = [
