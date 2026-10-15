@@ -34,12 +34,13 @@
         </div>
     </div>
     <div class="col-md-2">
-        <button class="btn btn-outline-secondary" type="submit">Buscar</button>
+        <button class="btn btn-primary" type="submit">Buscar</button>
     </div>
 </form>
 
 <div class="card">
-    <table class="table table-hover mb-0">
+    <div class="table-responsive">
+<table class="table table-hover mb-0">
         <thead>
         <tr><th>Código</th><th>Nombre</th><th>Categoría</th><th>Precio venta</th><th>Stock</th><th></th></tr>
         </thead>
@@ -73,5 +74,6 @@
         {% endfor %}
         </tbody>
     </table>
+</div>
 </div>
 {% endblock %}

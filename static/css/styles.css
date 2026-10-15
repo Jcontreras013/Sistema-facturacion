@@ -257,6 +257,13 @@ a:hover {
     background-color: #fff3cd !important;
 }
 
+/* En pantallas angostas, que cada celda se mantenga en una sola línea y el ancho real
+   de la tabla decida si hace falta deslizar — así "Agua pura 1 litro" no se parte en
+   tres líneas, en vez de eso el usuario desliza para ver el resto de las columnas. */
+.table-responsive .table {
+    white-space: nowrap;
+}
+
 /* ---------- Page header ---------- */
 
 .page-header {
@@ -454,11 +461,19 @@ a:hover {
 }
 
 @media (max-width: 767px) {
-    .pos-fkey-btn .pos-fkey-label {
-        display: none;
-    }
+    /* En táctil no hay teclas F físicas que pulsar: el número por sí solo no dice nada,
+       así que se mantiene el texto (más chico) y cada botón conserva su ancho natural
+       para deslizarse en la barra, en vez de aplastarse todos a la fuerza. */
     .pos-fkey-btn {
-        min-width: 44px;
+        flex: 0 0 auto;
+        min-width: 64px;
+        padding: 0.4rem 0.5rem;
+    }
+    .pos-fkey-btn .pos-fkey-tag {
+        font-size: 0.62rem;
+    }
+    .pos-fkey-btn .pos-fkey-label {
+        font-size: 0.66rem;
     }
 }
 

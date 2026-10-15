@@ -31,7 +31,8 @@
 </form>
 
 <div class="card">
-    <table class="table table-hover mb-0">
+    <div class="table-responsive">
+<table class="table table-hover mb-0">
         <thead><tr><th>Fecha y hora</th><th>Usuario</th><th>Acción</th><th>Tipo</th><th>Registro</th><th>Detalle</th></tr></thead>
         <tbody>
         {% for log in logs %}
@@ -57,5 +58,6 @@
         {% endfor %}
         </tbody>
     </table>
+</div>
 </div>
 {% endblock %}

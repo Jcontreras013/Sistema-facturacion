@@ -42,7 +42,8 @@
 {% if quote.notes %}<p class="text-muted">Notas: {{ quote.notes }}</p>{% endif %}
 
 <div class="card p-3 mb-3">
-    <table class="table table-sm mb-0">
+    <div class="table-responsive">
+<table class="table table-sm mb-0">
         <thead><tr><th>Producto</th><th class="text-end">Cantidad</th><th class="text-end">Precio unit.</th><th class="text-end">ISV</th><th class="text-end">Subtotal</th>{% if quote.status == "borrador" %}<th></th>{% endif %}</tr></thead>
         <tbody>
         {% for item in quote.items.all %}
@@ -78,6 +79,7 @@
         </tfoot>
         {% endif %}
     </table>
+</div>
 </div>
 
 {% if quote.status == "borrador" %}

@@ -21,7 +21,8 @@
 </div>
 
 <div class="card p-3">
-    <table class="table table-sm">
+    <div class="table-responsive">
+<table class="table table-sm">
         <thead><tr><th>Cliente</th><th class="text-end">Debe</th><th class="text-end">Límite</th><th class="text-end">Disponible</th><th></th></tr></thead>
         <tbody>
         {% for row in rows %}
@@ -49,5 +50,6 @@
         {% endfor %}
         </tbody>
     </table>
+</div>
 </div>
 {% endblock %}

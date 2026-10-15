@@ -14,7 +14,8 @@
     </div>
 </div>
 <div class="card p-3">
-    <table class="table table-sm">
+    <div class="table-responsive">
+<table class="table table-sm">
         <thead><tr><th>Código</th><th>Producto</th><th>Cantidad del lote</th><th>Vencimiento</th><th>Estado</th></tr></thead>
         <tbody>
         {% for batch in batches %}
@@ -38,5 +39,6 @@
         {% endfor %}
         </tbody>
     </table>
+</div>
 </div>
 {% endblock %}

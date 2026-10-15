@@ -14,7 +14,8 @@
     </div>
 </div>
 <div class="card p-3">
-    <table class="table table-sm">
+    <div class="table-responsive">
+<table class="table table-sm">
         <thead><tr><th>Código</th><th>Producto</th><th>Stock actual</th><th>Stock mínimo</th><th>Proveedor</th></tr></thead>
         <tbody>
         {% for product in products %}
@@ -35,5 +36,6 @@
         {% endfor %}
         </tbody>
     </table>
+</div>
 </div>
 {% endblock %}

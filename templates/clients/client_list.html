@@ -18,11 +18,12 @@
         <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Buscar por nombre o documento...">
     </div>
     <div class="col-md-2">
-        <button class="btn btn-outline-secondary" type="submit">Buscar</button>
+        <button class="btn btn-primary" type="submit">Buscar</button>
     </div>
 </form>
 <div class="card">
-    <table class="table table-hover mb-0">
+    <div class="table-responsive">
+<table class="table table-hover mb-0">
         <thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Estado</th><th></th></tr></thead>
         <tbody>
         {% for client in clients %}
@@ -46,5 +47,6 @@
         {% endfor %}
         </tbody>
     </table>
+</div>
 </div>
 {% endblock %}

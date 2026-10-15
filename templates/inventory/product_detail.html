@@ -14,7 +14,8 @@
 <div class="row g-4">
     <div class="col-md-5">
         <div class="card p-3">
-            <table class="table table-sm mb-0">
+            <div class="table-responsive">
+<table class="table table-sm mb-0">
                 <tr><th>Código de barras</th><td>{{ product.barcode|default:"—" }}</td></tr>
                 <tr><th>Categoría</th><td>{{ product.category|default:"—" }}</td></tr>
                 <tr><th>Proveedor</th><td>{{ product.provider|default:"—" }}</td></tr>
@@ -40,6 +41,7 @@
                     {% elif product.is_expiring_soon %}<span class="badge bg-warning text-dark">Por vencer</span>{% endif %}
                 </td></tr>
             </table>
+</div>
             {% if is_admin %}
             <a href="{% url 'inventory:product_update' product.pk %}" class="btn btn-outline-secondary btn-sm mt-2"><i class="bi bi-pencil"></i> Editar producto</a>
             {% endif %}
@@ -73,7 +75,8 @@
     <div class="col-md-7">
         <div class="card p-3 mb-3">
             <h6>Lotes recibidos</h6>
-            <table class="table table-sm mb-0">
+            <div class="table-responsive">
+<table class="table table-sm mb-0">
                 <thead><tr><th>Recibido</th><th>Cantidad</th><th>Vencimiento del lote</th><th></th></tr></thead>
                 <tbody>
                 {% for batch in batches %}
@@ -91,10 +94,12 @@
                 {% endfor %}
                 </tbody>
             </table>
+</div>
         </div>
         <div class="card p-3">
             <h6>Historial de movimientos</h6>
-            <table class="table table-sm">
+            <div class="table-responsive">
+<table class="table table-sm">
                 <thead><tr><th>Fecha</th><th>Tipo</th><th>Motivo</th><th>Cantidad</th><th>Detalle</th><th>Usuario</th></tr></thead>
                 <tbody>
                 {% for m in movements %}
@@ -111,6 +116,7 @@
                 {% endfor %}
                 </tbody>
             </table>
+</div>
         </div>
     </div>
 </div>

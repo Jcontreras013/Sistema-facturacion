@@ -14,7 +14,8 @@
     </div>
 </div>
 <div class="card">
-    <table class="table table-hover mb-0">
+    <div class="table-responsive">
+<table class="table table-hover mb-0">
         <thead><tr><th>Nombre</th><th>Aplica a</th><th>Descuento</th><th>Vigencia</th><th>Estado</th><th></th></tr></thead>
         <tbody>
         {% for promotion in promotions %}
@@ -43,5 +44,6 @@
         {% endfor %}
         </tbody>
     </table>
+</div>
 </div>
 {% endblock %}
