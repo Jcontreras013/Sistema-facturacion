@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Mini Market{% endblock %} · Sistema de Facturación</title>
+    <title>{% block title %}JC-POS{% endblock %} · Sistema de Facturación</title>
     <link href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
     <link href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}" rel="stylesheet">
     <link href="{% static 'css/styles.css' %}" rel="stylesheet">
@@ -53,7 +53,7 @@
 {% if user.is_authenticated %}
 <nav class="navbar navbar-expand-xxl navbar-dark app-navbar sticky-top">
     <div class="container-fluid">
-        <a class="navbar-brand fw-bold" href="{% url 'core:dashboard' %}"><span class="brand-badge"><i class="bi bi-shop"></i></span> Mini Market</a>
+        <a class="navbar-brand fw-bold" href="{% url 'core:dashboard' %}"><span class="brand-badge"><i class="bi bi-shop"></i></span> JC-POS</a>
         <div class="d-flex align-items-center">
             <button type="button" class="theme-toggle-btn d-xxl-none me-2" title="Cambiar a modo oscuro" aria-label="Cambiar entre modo claro y oscuro"><i class="bi bi-moon-stars"></i></button>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">

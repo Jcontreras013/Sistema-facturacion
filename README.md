@@ -1,4 +1,4 @@
-# Sistema de Facturación para Mini Markets (Honduras)
+# JC-POS — Sistema de Facturación para Mini Markets (Honduras)
 
 Aplicación web construida con Django para administrar un mini market: punto de venta (POS), inventario, clientes/proveedores, caja y reportes, adaptada al régimen fiscal de Honduras (SAR).
 
