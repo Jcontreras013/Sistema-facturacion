@@ -18,10 +18,19 @@
                 <tr><th>Abierta por</th><td>{{ session.opened_by }}</td></tr>
                 <tr><th>Apertura</th><td>{{ session.opened_at|date:"d/m/Y H:i" }}</td></tr>
                 <tr><th>Monto inicial</th><td>L {{ session.opening_amount|floatformat:2 }}</td></tr>
-                <tr><th>Ventas en efectivo</th><td>L {{ session.cash_sales_total|floatformat:2 }}</td></tr>
-                <tr><th>Monto esperado</th><td><strong>L {{ expected|floatformat:2 }}</strong></td></tr>
+                <tr><th>Ventas en efectivo (L)</th><td>L {{ session.cash_sales_total|floatformat:2 }}</td></tr>
+                <tr><th>Monto esperado en Lempiras</th><td><strong>L {{ expected|floatformat:2 }}</strong></td></tr>
+                {% if session.usd_cash_total %}
+                <tr><th>Dólares recibidos (aparte)</th><td>US$ {{ session.usd_cash_total|floatformat:2 }}</td></tr>
+                {% endif %}
             </table>
 </div>
+            {% if session.usd_cash_total %}
+            <p class="small text-muted mb-0 px-1">
+                El efectivo esperado en Lempiras ya resta el cambio entregado por las ventas en dólares.
+                Cuenta los dólares recibidos por separado: US$ {{ session.usd_cash_total|floatformat:2 }}.
+            </p>
+            {% endif %}
         </div>
     </div>
     <div class="col-md-7">

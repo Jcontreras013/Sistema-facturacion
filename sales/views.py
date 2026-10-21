@@ -46,7 +46,8 @@ def _get_open_session():
 
 def _create_sale(
     user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes,
-    mixed_cash_amount=None, mixed_other_amount=None,
+    mixed_cash_amount=None, mixed_other_amount=None, mixed_other_usd_amount=None,
+    exchange_rate=None, usd_received=None,
     discount_percent=None, discount_token=None,
     contingency_correlative=None,
 ):
@@ -144,8 +145,14 @@ def _create_sale(
             )
 
         if payment_method == "mixto":
-            if mixed_cash_amount is None or mixed_other_amount is None:
-                raise ValueError("Ingresa el monto en efectivo y el monto del otro método para un pago mixto.")
+            if mixed_cash_amount is None:
+                raise ValueError("Ingresa el monto en efectivo para un pago mixto.")
+            if mixed_other_usd_amount is not None:
+                if not exchange_rate or exchange_rate <= 0:
+                    raise ValueError("Ingresa el tipo de cambio para la parte en dólares del pago mixto.")
+                mixed_other_amount = (mixed_other_usd_amount * exchange_rate).quantize(Decimal("0.01"))
+            elif mixed_other_amount is None:
+                raise ValueError("Ingresa el monto del otro método para un pago mixto.")
             combined = mixed_cash_amount + mixed_other_amount
             if abs(combined - sale.total) > Decimal("0.01"):
                 raise ValueError(
@@ -153,7 +160,27 @@ def _create_sale(
                 )
             sale.mixed_cash_amount = mixed_cash_amount
             sale.mixed_other_amount = mixed_other_amount
-            sale.save(update_fields=["mixed_cash_amount", "mixed_other_amount"])
+            update_fields = ["mixed_cash_amount", "mixed_other_amount"]
+            if mixed_other_usd_amount is not None:
+                sale.mixed_other_usd_amount = mixed_other_usd_amount
+                sale.exchange_rate = exchange_rate
+                update_fields += ["mixed_other_usd_amount", "exchange_rate"]
+            sale.save(update_fields=update_fields)
+
+        if payment_method == "dolares":
+            if not exchange_rate or exchange_rate <= 0:
+                raise ValueError("Ingresa el tipo de cambio del día.")
+            if not usd_received or usd_received <= 0:
+                raise ValueError("Ingresa el monto recibido en dólares.")
+            equivalent = (usd_received * exchange_rate).quantize(Decimal("0.01"))
+            if equivalent < sale.total - Decimal("0.01"):
+                raise ValueError(
+                    f"El monto en dólares (equivale a L {equivalent:.2f} al tipo de cambio ingresado) "
+                    f"no cubre el total de la venta (L {sale.total:.2f})."
+                )
+            sale.exchange_rate = exchange_rate
+            sale.usd_received = usd_received
+            sale.save(update_fields=["exchange_rate", "usd_received"])
     log_action(user, "created", sale)
     return sale
 
@@ -181,6 +208,9 @@ def pos(request):
         notes = request.POST.get("notes", "")
         mixed_cash_amount = request.POST.get("mixed_cash_amount") or None
         mixed_other_amount = request.POST.get("mixed_other_amount") or None
+        mixed_other_usd_amount = request.POST.get("mixed_other_usd_amount") or None
+        exchange_rate = request.POST.get("exchange_rate") or None
+        usd_received = request.POST.get("usd_received") or None
         discount_percent = request.POST.get("discount_percent") or None
         discount_token = request.POST.get("discount_token") or None
 
@@ -198,6 +228,9 @@ def pos(request):
                 request.user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes,
                 mixed_cash_amount=Decimal(mixed_cash_amount) if mixed_cash_amount else None,
                 mixed_other_amount=Decimal(mixed_other_amount) if mixed_other_amount else None,
+                mixed_other_usd_amount=Decimal(mixed_other_usd_amount) if mixed_other_usd_amount else None,
+                exchange_rate=Decimal(exchange_rate) if exchange_rate else None,
+                usd_received=Decimal(usd_received) if usd_received else None,
                 discount_percent=discount_percent, discount_token=discount_token,
             )
         except (ValueError, InvalidOperation, KeyError) as exc:
@@ -254,6 +287,7 @@ def pos(request):
             "payment_methods": Sale.PAYMENT_METHODS,
             "open_session": open_session,
             "contingency_json": json.dumps(Company.load().contingency_config()),
+            "default_exchange_rate": str(Company.load().default_exchange_rate or ""),
         },
     )
 
@@ -283,6 +317,9 @@ def pos_checkout_api(request):
     notes = payload.get("notes") or ""
     mixed_cash_amount = payload.get("mixed_cash_amount")
     mixed_other_amount = payload.get("mixed_other_amount")
+    mixed_other_usd_amount = payload.get("mixed_other_usd_amount")
+    exchange_rate = payload.get("exchange_rate")
+    usd_received = payload.get("usd_received")
     discount_percent = payload.get("discount_percent")
     discount_token = payload.get("discount_token")
     contingency_correlative = payload.get("contingency_correlative")
@@ -303,6 +340,11 @@ def pos_checkout_api(request):
             request.user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes,
             mixed_cash_amount=Decimal(str(mixed_cash_amount)) if mixed_cash_amount not in (None, "") else None,
             mixed_other_amount=Decimal(str(mixed_other_amount)) if mixed_other_amount not in (None, "") else None,
+            mixed_other_usd_amount=(
+                Decimal(str(mixed_other_usd_amount)) if mixed_other_usd_amount not in (None, "") else None
+            ),
+            exchange_rate=Decimal(str(exchange_rate)) if exchange_rate not in (None, "") else None,
+            usd_received=Decimal(str(usd_received)) if usd_received not in (None, "") else None,
             discount_percent=discount_percent, discount_token=discount_token,
             contingency_correlative=contingency_correlative,
         )

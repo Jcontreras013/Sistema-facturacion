@@ -43,6 +43,11 @@ class Company(models.Model):
 
     default_isv_rate = models.DecimalField("Tasa de ISV por defecto (%)", max_digits=5, decimal_places=2, default=Decimal("15.00"))
 
+    default_exchange_rate = models.DecimalField(
+        "Tipo de cambio del día (Lempiras por US$1)", max_digits=8, decimal_places=4, null=True, blank=True,
+        help_text="Se usa para prellenar el tipo de cambio al cobrar en dólares en el POS; el cajero puede corregirlo en cada venta.",
+    )
+
     RECEIPT_THERMAL_80 = "thermal_80"
     RECEIPT_THERMAL_58 = "thermal_58"
     RECEIPT_LETTER = "letter"

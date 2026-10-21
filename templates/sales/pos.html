@@ -153,15 +153,49 @@
                 <div id="mixedPaymentBlock" class="border-top pt-2 mt-2" style="display:none;">
                     <div class="row g-2">
                         <div class="col-6">
-                            <label class="form-label small">Efectivo</label>
+                            <label class="form-label small">Efectivo (L)</label>
                             <input type="number" id="mixedCashInput" class="form-control" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
                         </div>
                         <div class="col-6">
-                            <label class="form-label small">Tarjeta / transferencia</label>
+                            <label class="form-label small" id="mixedOtherLabel">Tarjeta / transferencia (L)</label>
                             <input type="number" id="mixedOtherInput" class="form-control" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
                         </div>
                     </div>
+                    <div class="form-check mt-2">
+                        <input type="checkbox" class="form-check-input" id="mixedOtherIsUsd">
+                        <label class="form-check-label small" for="mixedOtherIsUsd">El otro monto fue en dólares (US$)</label>
+                    </div>
+                    <div class="row g-2 mt-1" id="mixedUsdRateRow" style="display:none;">
+                        <div class="col-6">
+                            <label class="form-label small">Tipo de cambio (L x US$1)</label>
+                            <input type="number" id="mixedExchangeRateInput" class="form-control" min="0" step="0.0001" inputmode="decimal" value="{{ default_exchange_rate }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">Equivalente en Lempiras</label>
+                            <input type="text" id="mixedUsdEquivalent" class="form-control" disabled value="L 0.00">
+                        </div>
+                    </div>
                     <div class="small mt-2" id="mixedPaymentHint"></div>
+                </div>
+                <div id="usdPaymentBlock" class="border-top pt-2 mt-2" style="display:none;">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label small">Tipo de cambio (L x US$1)</label>
+                            <input type="number" id="usdExchangeRateInput" class="form-control" min="0" step="0.0001" inputmode="decimal" value="{{ default_exchange_rate }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">Recibido en US$</label>
+                            <input type="number" id="usdReceivedInput" class="form-control" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <span class="small">Equivalente en Lempiras</span>
+                        <strong id="usdEquivalent">L 0.00</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-1">
+                        <span class="fs-5">Cambio (en L)</span>
+                        <strong class="fs-4" id="usdChange">L 0.00</strong>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-success btn-lg mt-3" id="checkoutBtn" disabled>
                     <i class="bi bi-check-circle"></i> Cobrar venta
@@ -527,6 +561,7 @@ function updateSummary() {
     document.getElementById('checkoutBtn').disabled = cart.length === 0 || !isPaymentBreakdownValid();
     updateCashChange();
     updateMixedPaymentHint();
+    updateUsdPayment();
 }
 
 const cashCalculator = document.getElementById('cashCalculator');
@@ -535,11 +570,22 @@ const cashChange = document.getElementById('cashChange');
 const mixedPaymentBlock = document.getElementById('mixedPaymentBlock');
 const mixedCashInput = document.getElementById('mixedCashInput');
 const mixedOtherInput = document.getElementById('mixedOtherInput');
+const mixedOtherLabel = document.getElementById('mixedOtherLabel');
+const mixedOtherIsUsd = document.getElementById('mixedOtherIsUsd');
+const mixedUsdRateRow = document.getElementById('mixedUsdRateRow');
+const mixedExchangeRateInput = document.getElementById('mixedExchangeRateInput');
+const mixedUsdEquivalent = document.getElementById('mixedUsdEquivalent');
 const mixedPaymentHint = document.getElementById('mixedPaymentHint');
+const usdPaymentBlock = document.getElementById('usdPaymentBlock');
+const usdExchangeRateInput = document.getElementById('usdExchangeRateInput');
+const usdReceivedInput = document.getElementById('usdReceivedInput');
+const usdEquivalent = document.getElementById('usdEquivalent');
+const usdChange = document.getElementById('usdChange');
 
 function toggleCashCalculator() {
     cashCalculator.style.display = paymentMethodSelect.value === 'efectivo' ? 'block' : 'none';
     mixedPaymentBlock.style.display = paymentMethodSelect.value === 'mixto' ? 'block' : 'none';
+    usdPaymentBlock.style.display = paymentMethodSelect.value === 'dolares' ? 'block' : 'none';
     updateSummary();
 }
 
@@ -555,10 +601,22 @@ function updateCashChange() {
     }
 }
 
+function mixedOtherLempiraAmount() {
+    if (mixedOtherIsUsd.checked) {
+        const usd = parseFloat(mixedOtherInput.value || '0');
+        const rate = parseFloat(mixedExchangeRateInput.value || '0');
+        return usd * rate;
+    }
+    return parseFloat(mixedOtherInput.value || '0');
+}
+
 function updateMixedPaymentHint() {
     if (paymentMethodSelect.value !== 'mixto') return;
+    if (mixedOtherIsUsd.checked) {
+        mixedUsdEquivalent.value = 'L ' + mixedOtherLempiraAmount().toFixed(2);
+    }
     const cashPart = parseFloat(mixedCashInput.value || '0');
-    const otherPart = parseFloat(mixedOtherInput.value || '0');
+    const otherPart = mixedOtherLempiraAmount();
     const combined = cashPart + otherPart;
     const diff = combined - cartTotalAmount;
     if (Math.abs(diff) <= 0.01) {
@@ -573,16 +631,47 @@ function updateMixedPaymentHint() {
     }
 }
 
+function updateUsdPayment() {
+    if (paymentMethodSelect.value !== 'dolares') return;
+    const usd = parseFloat(usdReceivedInput.value || '0');
+    const rate = parseFloat(usdExchangeRateInput.value || '0');
+    const equivalent = usd * rate;
+    const change = equivalent - cartTotalAmount;
+    usdEquivalent.textContent = 'L ' + equivalent.toFixed(2);
+    if (!usdReceivedInput.value || !usdExchangeRateInput.value || change < 0) {
+        usdChange.textContent = change < 0 ? `Faltan L ${Math.abs(change).toFixed(2)}` : 'L 0.00';
+        usdChange.className = change < 0 ? 'fs-4 text-danger' : 'fs-4';
+    } else {
+        usdChange.textContent = 'L ' + change.toFixed(2);
+        usdChange.className = 'fs-4 text-success';
+    }
+}
+
 function isPaymentBreakdownValid() {
-    if (paymentMethodSelect.value !== 'mixto') return true;
-    const cashPart = parseFloat(mixedCashInput.value || '0');
-    const otherPart = parseFloat(mixedOtherInput.value || '0');
-    return Math.abs((cashPart + otherPart) - cartTotalAmount) <= 0.01;
+    if (paymentMethodSelect.value === 'mixto') {
+        const cashPart = parseFloat(mixedCashInput.value || '0');
+        const otherPart = mixedOtherLempiraAmount();
+        return Math.abs((cashPart + otherPart) - cartTotalAmount) <= 0.01;
+    }
+    if (paymentMethodSelect.value === 'dolares') {
+        const usd = parseFloat(usdReceivedInput.value || '0');
+        const rate = parseFloat(usdExchangeRateInput.value || '0');
+        return usd > 0 && rate > 0 && (usd * rate) >= cartTotalAmount - 0.01;
+    }
+    return true;
 }
 
 cashReceived.addEventListener('input', updateCashChange);
 mixedCashInput.addEventListener('input', updateSummary);
 mixedOtherInput.addEventListener('input', updateSummary);
+mixedExchangeRateInput.addEventListener('input', updateSummary);
+usdReceivedInput.addEventListener('input', () => { updateUsdPayment(); updateSummary(); });
+usdExchangeRateInput.addEventListener('input', () => { updateUsdPayment(); updateSummary(); });
+mixedOtherIsUsd.addEventListener('change', () => {
+    mixedUsdRateRow.style.display = mixedOtherIsUsd.checked ? 'flex' : 'none';
+    mixedOtherLabel.textContent = mixedOtherIsUsd.checked ? 'Otro monto (US$)' : 'Tarjeta / transferencia (L)';
+    updateSummary();
+});
 
 const CLIENTS = {{ clients_json|safe }};
 const clientSearch = document.getElementById('clientSearch');
@@ -809,6 +898,10 @@ function resetSaleForm() {
     cashReceived.value = '';
     mixedCashInput.value = '';
     mixedOtherInput.value = '';
+    mixedOtherIsUsd.checked = false;
+    mixedUsdRateRow.style.display = 'none';
+    mixedOtherLabel.textContent = 'Tarjeta / transferencia (L)';
+    usdReceivedInput.value = '';
     clearAppliedDiscount();
     updateSummary();
 }
@@ -832,7 +925,16 @@ document.getElementById('saleForm').addEventListener('submit', async (e) => {
     };
     if (paymentMethodSelect.value === 'mixto') {
         payload.mixed_cash_amount = mixedCashInput.value || '0';
-        payload.mixed_other_amount = mixedOtherInput.value || '0';
+        if (mixedOtherIsUsd.checked) {
+            payload.mixed_other_usd_amount = mixedOtherInput.value || '0';
+            payload.exchange_rate = mixedExchangeRateInput.value || '0';
+        } else {
+            payload.mixed_other_amount = mixedOtherInput.value || '0';
+        }
+    }
+    if (paymentMethodSelect.value === 'dolares') {
+        payload.usd_received = usdReceivedInput.value || '0';
+        payload.exchange_rate = usdExchangeRateInput.value || '0';
     }
     if (appliedDiscountPercent > 0 && appliedDiscountToken) {
         payload.discount_percent = appliedDiscountPercent;
@@ -923,8 +1025,11 @@ function runFKeyAction(key) {
             if (paymentMethodSelect.value === 'efectivo') {
                 cashReceived.focus();
                 cashReceived.select();
+            } else if (paymentMethodSelect.value === 'dolares') {
+                usdReceivedInput.focus();
+                usdReceivedInput.select();
             } else {
-                showPosMessage('El cálculo de cambio solo aplica cuando la forma de pago es Efectivo.', 'warning');
+                showPosMessage('El cálculo de cambio solo aplica cuando la forma de pago es Efectivo o Dólares.', 'warning');
             }
             break;
         case 'F6':
