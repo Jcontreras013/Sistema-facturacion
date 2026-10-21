@@ -10,14 +10,16 @@
         </div>
     </div>
 </div>
-<div class="card p-4" style="max-width: 700px;">
+<div class="card p-4" style="max-width: 820px;">
     {% if form.non_field_errors %}
         <div class="alert alert-danger">{{ form.non_field_errors }}</div>
     {% endif %}
     <form method="post">
         {% csrf_token %}
         {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
-        <div class="row g-3">
+
+        <h6>Identificación</h6>
+        <div class="row g-3 align-items-start mb-3">
             <div class="col-md-6">
                 <label class="form-label">{{ form.code.label }}</label>
                 {{ form.code }}
@@ -29,44 +31,64 @@
                 <small class="text-muted">Si no lo tienes, deja este campo vacío y usa el código/SKU.</small>
                 <div id="barcodeWarning" class="alert alert-warning py-2 px-3 mt-2 mb-0 small" style="display:none;"></div>
             </div>
-            <div class="col-md-12">
+            <div class="col-12">
                 <label class="form-label">{{ form.name.label }}</label>
                 {{ form.name }}
             </div>
-            <div class="col-md-6">
+        </div>
+
+        <hr>
+        <h6>Clasificación</h6>
+        <div class="row g-3 align-items-start mb-3">
+            <div class="col-md-5">
                 <label class="form-label">{{ form.category.label }}</label>
                 {{ form.category }}
             </div>
-            <div class="col-md-6">
+            <div class="col-md-5">
                 <label class="form-label">{{ form.provider.label }}</label>
                 {{ form.provider }}
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label">{{ form.unit.label }}</label>
                 {{ form.unit }}
             </div>
-            <div class="col-md-3">
+        </div>
+
+        <hr>
+        <h6>Precios e impuesto</h6>
+        <div class="row g-3 align-items-start mb-3">
+            <div class="col-md-4">
                 <label class="form-label">{{ form.purchase_price.label }}</label>
                 {{ form.purchase_price }}
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <label class="form-label">{{ form.sale_price.label }}</label>
                 {{ form.sale_price }}
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <label class="form-label">{{ form.tax_rate.label }}</label>
                 {{ form.tax_rate }}
                 <small class="text-muted">{{ form.tax_rate.help_text }}</small>
             </div>
-            <div class="col-md-3">
+        </div>
+
+        <hr>
+        <h6>Mayoreo <span class="text-muted fw-normal">(opcional)</span></h6>
+        <div class="row g-3 align-items-start mb-3">
+            <div class="col-md-6">
                 <label class="form-label">{{ form.wholesale_price.label }}</label>
                 {{ form.wholesale_price }}
             </div>
-            <div class="col-md-3">
+            <div class="col-md-6">
                 <label class="form-label">{{ form.wholesale_min_qty.label }}</label>
                 {{ form.wholesale_min_qty }}
                 <small class="text-muted">{{ form.wholesale_min_qty.help_text }}</small>
             </div>
+        </div>
+
+        <hr>
+        <h6>Inventario</h6>
+        <div class="row g-3 align-items-start mb-3">
             <div class="col-md-4">
                 <label class="form-label">{{ form.stock.label }}</label>
                 {{ form.stock }}
@@ -84,6 +106,7 @@
                 <label class="form-check-label">{{ form.is_active.label }}</label>
             </div>
         </div>
+
         <div class="mt-4">
             <button type="submit" class="btn btn-primary">Guardar</button>
             <a href="{{ next|default:'' }}{% if not next %}{% url 'inventory:product_list' %}{% endif %}" class="btn btn-outline-secondary">Cancelar</a>
