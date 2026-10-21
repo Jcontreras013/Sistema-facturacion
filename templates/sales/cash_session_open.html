@@ -11,13 +11,38 @@
     </div>
 </div>
 <div class="card p-4" style="max-width: 500px;">
+    {% if not register_rows %}
+        <div class="alert alert-warning mb-0">
+            No hay cajas configuradas. Pide a un administrador que cree al menos una en
+            <a href="{% url 'sales:register_list' %}">Cajas / puntos de cobro</a>.
+        </div>
+    {% else %}
     <form method="post">
         {% csrf_token %}
         <div class="mb-3">
+            <label class="form-label">Caja a abrir</label>
+            {% for row in register_rows %}
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="register_id" id="register-{{ row.register.pk }}"
+                        value="{{ row.register.pk }}" {% if row.occupied_by %}disabled{% endif %}
+                        {% if forloop.first and not row.occupied_by %}checked{% endif %}>
+                    <label class="form-check-label" for="register-{{ row.register.pk }}">
+                        {{ row.register.name }}
+                        {% if row.occupied_by %}
+                            <span class="text-muted small">— ocupada por {{ row.occupied_by }}</span>
+                        {% else %}
+                            <span class="text-success small">— disponible</span>
+                        {% endif %}
+                    </label>
+                </div>
+            {% endfor %}
+        </div>
+        <div class="mb-3">
             <label class="form-label">Monto inicial en caja</label>
-            <input type="number" step="0.01" min="0" name="opening_amount" class="form-control" value="0.00" required autofocus>
+            <input type="number" step="0.01" min="0" name="opening_amount" class="form-control" value="0.00" required>
         </div>
         <button type="submit" class="btn btn-primary">Abrir caja</button>
     </form>
+    {% endif %}
 </div>
 {% endblock %}

@@ -9,7 +9,30 @@ from core.models import Company
 from inventory.models import Product
 
 
+class Register(models.Model):
+    """Una caja / punto de cobro físico (ej. 'Caja 1', 'Caja 2'). Permite que varios
+    cajeros tengan su propia sesión de caja abierta al mismo tiempo, cada uno en la suya."""
+
+    name = models.CharField("Nombre", max_length=50, unique=True)
+    is_active = models.BooleanField("Activa", default=True, help_text="Las cajas inactivas no aparecen al abrir turno.")
+    created_at = models.DateTimeField("Creada", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Caja / punto de cobro"
+        verbose_name_plural = "Cajas / puntos de cobro"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+    def open_session(self):
+        return self.sessions.filter(closed_at__isnull=True).first()
+
+
 class CashSession(models.Model):
+    register = models.ForeignKey(
+        Register, verbose_name="Caja", on_delete=models.PROTECT, null=True, blank=True, related_name="sessions",
+    )
     opened_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Abierta por", on_delete=models.SET_NULL, null=True,
         related_name="cash_sessions_opened",
@@ -31,6 +54,12 @@ class CashSession(models.Model):
         verbose_name = "Sesión de caja"
         verbose_name_plural = "Sesiones de caja"
         ordering = ["-opened_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["register"], condition=models.Q(closed_at__isnull=True),
+                name="unique_open_session_per_register",
+            )
+        ]
 
     def __str__(self):
         return f"Caja #{self.pk} ({'abierta' if self.is_open else 'cerrada'})"
@@ -68,6 +97,29 @@ class CashSession(models.Model):
         self.closed_at = timezone.now()
         self.notes = notes
         self.save()
+
+
+def get_active_cash_session(request):
+    """Resuelve la sesión de caja que el usuario actual tiene abierta en este navegador.
+
+    Permite que varios cajeros trabajen a la vez, cada uno en su propia caja: se guarda
+    cuál caja eligió este usuario en su sesión de navegador (request.session), y si no hay
+    ninguna marcada (ej. inició sesión en otro dispositivo) se busca una caja que él mismo
+    tenga abierta y se recuerda para la próxima vez.
+    """
+    register_id = request.session.get("active_register_id")
+    session = None
+    if register_id:
+        session = CashSession.objects.filter(register_id=register_id, closed_at__isnull=True).first()
+    if session is None:
+        session = (
+            CashSession.objects.filter(opened_by=request.user, closed_at__isnull=True)
+            .order_by("-opened_at")
+            .first()
+        )
+        if session is not None:
+            request.session["active_register_id"] = session.register_id
+    return session
 
 
 class Sale(models.Model):

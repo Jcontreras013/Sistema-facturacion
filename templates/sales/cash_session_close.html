@@ -15,6 +15,7 @@
         <div class="card p-3">
             <div class="table-responsive">
 <table class="table table-sm mb-0">
+                <tr><th>Caja</th><td>{{ session.register.name|default:"—" }}</td></tr>
                 <tr><th>Abierta por</th><td>{{ session.opened_by }}</td></tr>
                 <tr><th>Apertura</th><td>{{ session.opened_at|date:"d/m/Y H:i" }}</td></tr>
                 <tr><th>Monto inicial</th><td>L {{ session.opening_amount|floatformat:2 }}</td></tr>
