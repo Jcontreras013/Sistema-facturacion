@@ -1,0 +1,64 @@
+name: Compilar instalador de Windows (JC-POS)
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - claude/mini-markets-system-fme1x5
+      - main
+    paths:
+      - "desktop/**"
+      - "core/**"
+      - "inventory/**"
+      - "clients/**"
+      - "sales/**"
+      - "reports/**"
+      - "config/**"
+      - "templates/**"
+      - "static/**"
+      - ".github/workflows/build-windows-installer.yml"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias de escritorio
+        run: pip install -r desktop/requirements-desktop.txt
+
+      - name: Recolectar archivos estáticos
+        shell: bash
+        run: |
+          export DEBUG=False
+          export ALLOWED_HOSTS=localhost
+          python manage.py collectstatic --noinput
+
+      - name: Compilar el ejecutable con PyInstaller
+        run: pyinstaller desktop/jc-pos.spec --distpath dist --workpath build --noconfirm
+
+      - name: Instalar Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Compilar el instalador (Setup.exe)
+        shell: cmd
+        run: '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" desktop\installer.iss'
+
+      - name: Publicar el instalador como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: JC-POS-Setup
+          path: dist_installer\JC-POS-Setup.exe
+          retention-days: 30
+
+      - name: Adjuntar el instalador al Release (solo en tags v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist_installer\JC-POS-Setup.exe

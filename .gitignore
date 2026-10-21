@@ -8,3 +8,9 @@ env/
 *.egg-info/
 staticfiles/
 .DS_Store
+
+# Artefactos de compilación del instalador de escritorio (se generan en CI)
+/dist/
+/build/
+/dist_installer/
+
