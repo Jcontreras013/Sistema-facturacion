@@ -12,6 +12,41 @@
     <link rel="icon" href="{% static 'icons/icon-192.png' %}">
     <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}">
     <meta name="theme-color" content="#198754">
+    <script>
+    (function () {
+        var STORAGE_KEY = 'theme';
+        function systemPrefersDark() {
+            return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+        function getTheme() {
+            return localStorage.getItem(STORAGE_KEY) || (systemPrefersDark() ? 'dark' : 'light');
+        }
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-bs-theme', theme);
+            document.querySelectorAll('.theme-toggle-btn').forEach(function (btn) {
+                var icon = btn.querySelector('i');
+                if (icon) icon.className = theme === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
+                btn.setAttribute('title', theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
+            });
+        }
+        // Se aplica ya, antes de pintar el body, para no parpadear de claro a oscuro.
+        applyTheme(getTheme());
+        document.addEventListener('DOMContentLoaded', function () { applyTheme(getTheme()); });
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.theme-toggle-btn');
+            if (!btn) return;
+            var current = document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light';
+            var next = current === 'dark' ? 'light' : 'dark';
+            localStorage.setItem(STORAGE_KEY, next);
+            applyTheme(next);
+        });
+        if (window.matchMedia) {
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
+                if (!localStorage.getItem(STORAGE_KEY)) applyTheme(e.matches ? 'dark' : 'light');
+            });
+        }
+    })();
+    </script>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -19,9 +54,12 @@
 <nav class="navbar navbar-expand-xxl navbar-dark app-navbar sticky-top">
     <div class="container-fluid">
         <a class="navbar-brand fw-bold" href="{% url 'core:dashboard' %}"><span class="brand-badge"><i class="bi bi-shop"></i></span> Mini Market</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+        <div class="d-flex align-items-center">
+            <button type="button" class="theme-toggle-btn d-xxl-none me-2" title="Cambiar a modo oscuro" aria-label="Cambiar entre modo claro y oscuro"><i class="bi bi-moon-stars"></i></button>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+        </div>
         <div class="collapse navbar-collapse" id="navMain">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item"><a class="nav-link" href="{% url 'core:dashboard' %}"><i class="bi bi-speedometer2"></i> Panel</a></li>
@@ -69,6 +107,9 @@
                 {% endif %}
             </ul>
             <ul class="navbar-nav align-items-lg-center">
+                <li class="nav-item me-lg-2 d-none d-xxl-block">
+                    <button type="button" class="theme-toggle-btn" title="Cambiar a modo oscuro" aria-label="Cambiar entre modo claro y oscuro"><i class="bi bi-moon-stars"></i></button>
+                </li>
                 <li class="nav-item"><span class="user-chip"><i class="bi bi-person-circle"></i> {{ user.username }}{% if is_admin %} (admin){% else %} (cajero){% endif %}</span></li>
                 <li class="nav-item">
                     <form action="{% url 'logout' %}" method="post" class="d-inline">
@@ -80,6 +121,8 @@
         </div>
     </div>
 </nav>
+{% else %}
+<button type="button" class="theme-toggle-btn theme-toggle-floating" title="Cambiar a modo oscuro" aria-label="Cambiar entre modo claro y oscuro"><i class="bi bi-moon-stars"></i></button>
 {% endif %}
 
 <div class="container-fluid py-4 px-4">

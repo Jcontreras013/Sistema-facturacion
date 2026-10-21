@@ -9,12 +9,46 @@
     --muted: #64766e;
     --bg: #eef4f0;
     --surface: #ffffff;
+    --link: #0d5c35;
+    --link-hover: #0a4527;
+    --border: #d9e2dc;
+    --table-low-stock-bg: #fff3cd;
+    --empty-state-icon: #c7d8ce;
+    --danger-badge-bg: #fdecea;
+    --danger-badge-ink: #d64545;
     --radius-lg: 1rem;
     --radius-md: 0.75rem;
     --radius-sm: 0.5rem;
     --shadow-sm: 0 1px 2px rgba(16, 40, 27, 0.06), 0 1px 3px rgba(16, 40, 27, 0.08);
     --shadow-md: 0 4px 14px rgba(16, 40, 27, 0.09);
     --shadow-lg: 0 12px 32px rgba(16, 40, 27, 0.14);
+}
+
+/* Modo oscuro: se activa con [data-bs-theme="dark"] en <html> (ver script en base.html),
+   no con prefers-color-scheme directo, para que el botón de la barra pueda forzar el tema
+   sin pelear con el sistema operativo. Reutiliza el mismo atributo que ya trae Bootstrap 5.3,
+   así sus propios componentes (modales, dropdowns, formularios) también cambian solos. */
+[data-bs-theme="dark"] {
+    --brand: #27aa63;
+    --brand-dark: #0d6b3d;
+    --brand-darker: #062c17;
+    --brand-light: #152a1f;
+    --accent: #f2b43a;
+    --accent-dark: #d6900f;
+    --ink: #e9f0ea;
+    --muted: #93a79c;
+    --bg: #0e1712;
+    --surface: #182420;
+    --link: #62d696;
+    --link-hover: #8fe3b5;
+    --border: #2d3c34;
+    --table-low-stock-bg: #3d330f;
+    --empty-state-icon: #3c4e44;
+    --danger-badge-bg: #3a1f1d;
+    --danger-badge-ink: #f0796a;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 
 * {
@@ -37,11 +71,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 a {
-    color: var(--brand-dark);
+    color: var(--link);
 }
 
 a:hover {
-    color: var(--brand-darker);
+    color: var(--link-hover);
 }
 
 /* ---------- Navbar ---------- */
@@ -224,7 +258,7 @@ a:hover {
 
 .form-control, .form-select {
     border-radius: var(--radius-sm);
-    border-color: #d9e2dc;
+    border-color: var(--border);
 }
 
 .form-control:focus, .form-select:focus {
@@ -254,7 +288,7 @@ a:hover {
 }
 
 .table-low-stock {
-    background-color: #fff3cd !important;
+    background-color: var(--table-low-stock-bg) !important;
 }
 
 /* En pantallas angostas, que cada celda se mantenga en una sola línea y el ancho real
@@ -322,7 +356,7 @@ a:hover {
 
 .empty-state i {
     font-size: 2.25rem;
-    color: #c7d8ce;
+    color: var(--empty-state-icon);
     margin-bottom: 0.6rem;
     display: block;
 }
@@ -366,8 +400,8 @@ a:hover {
     width: 64px;
     height: 64px;
     border-radius: 50%;
-    background: #fdecea;
-    color: #d64545;
+    background: var(--danger-badge-bg);
+    color: var(--danger-badge-ink);
     font-size: 1.75rem;
     display: flex;
     align-items: center;
@@ -475,6 +509,42 @@ a:hover {
     .pos-fkey-btn .pos-fkey-label {
         font-size: 0.66rem;
     }
+}
+
+/* ---------- Selector de tema ---------- */
+
+.theme-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 999px;
+    border: none;
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+    font-size: 1.05rem;
+    transition: background 0.15s ease;
+}
+
+.theme-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.24);
+    color: #fff;
+}
+
+.theme-toggle-floating {
+    position: fixed;
+    top: 1.1rem;
+    right: 1.1rem;
+    z-index: 1050;
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow-md);
+}
+
+.theme-toggle-floating:hover {
+    background: var(--brand-light);
+    color: var(--ink);
 }
 
 /* ---------- Misc ---------- */
@@ -628,8 +698,9 @@ a:hover {
 }
 
 .auth-input-group .input-group-text {
-    background: #f4f7f5;
+    background: var(--brand-light);
     border-right: none;
+    border-color: var(--border);
     color: var(--muted);
 }
 
@@ -641,7 +712,7 @@ a:hover {
 
 .auth-input-group .form-control:focus {
     box-shadow: none;
-    border-color: #d9e2dc;
+    border-color: var(--border);
 }
 
 .auth-input-group:focus-within {
@@ -663,7 +734,19 @@ a:hover {
 }
 
 @media print {
-    nav, .no-print {
+    /* El ticket se imprime siempre en claro, sin importar el modo oscuro en pantalla:
+       de lo contrario el texto (--ink casi blanco en modo oscuro) quedaría invisible
+       sobre el fondo blanco forzado de la impresión. */
+    :root, [data-bs-theme="dark"] {
+        --ink: #1c2b25;
+        --muted: #64766e;
+        --surface: #ffffff;
+        --bg: #ffffff;
+        --border: #d9e2dc;
+        color-scheme: light;
+    }
+
+    nav, .no-print, .theme-toggle-floating {
         display: none !important;
     }
 
