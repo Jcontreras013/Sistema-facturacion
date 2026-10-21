@@ -513,7 +513,8 @@ a:hover {
 
 /* ---------- Selector de tema ---------- */
 
-.theme-toggle-btn {
+.theme-toggle-btn,
+.install-app-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -527,7 +528,8 @@ a:hover {
     transition: background 0.15s ease;
 }
 
-.theme-toggle-btn:hover {
+.theme-toggle-btn:hover,
+.install-app-btn:hover {
     background: rgba(255, 255, 255, 0.24);
     color: #fff;
 }

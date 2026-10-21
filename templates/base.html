@@ -46,6 +46,46 @@
             });
         }
     })();
+    (function () {
+        // Captura el evento de instalación lo antes posible (antes de que el navbar
+        // termine de cargar), para no perdérnoslo si el navegador lo dispara temprano.
+        function isStandalone() {
+            return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+        }
+        function isIOS() {
+            return /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+        }
+        function syncButtons() {
+            document.querySelectorAll('.install-app-btn').forEach(function (btn) {
+                btn.style.display = isStandalone() ? 'none' : '';
+            });
+        }
+        document.addEventListener('DOMContentLoaded', syncButtons);
+        window.addEventListener('beforeinstallprompt', function (e) {
+            e.preventDefault();
+            window.__mmInstallPrompt = e;
+            syncButtons();
+        });
+        window.addEventListener('appinstalled', function () {
+            window.__mmInstallPrompt = null;
+            syncButtons();
+        });
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.install-app-btn');
+            if (!btn) return;
+            var prompt = window.__mmInstallPrompt;
+            if (prompt) {
+                prompt.prompt();
+                prompt.userChoice.finally(function () { window.__mmInstallPrompt = null; syncButtons(); });
+                return;
+            }
+            var modalEl = document.getElementById('installInstructionsModal');
+            if (!modalEl) return;
+            modalEl.querySelector('.install-instructions-ios').style.display = isIOS() ? 'block' : 'none';
+            modalEl.querySelector('.install-instructions-other').style.display = isIOS() ? 'none' : 'block';
+            new bootstrap.Modal(modalEl).show();
+        });
+    })();
     </script>
     {% block extra_head %}{% endblock %}
 </head>
@@ -55,6 +95,7 @@
     <div class="container-fluid">
         <a class="navbar-brand fw-bold" href="{% url 'core:dashboard' %}"><span class="brand-badge"><i class="bi bi-shop"></i></span> JC-POS</a>
         <div class="d-flex align-items-center">
+            <button type="button" class="install-app-btn d-xxl-none me-2" title="Instalar app" aria-label="Instalar JC-POS como aplicación"><i class="bi bi-download"></i></button>
             <button type="button" class="theme-toggle-btn d-xxl-none me-2" title="Cambiar a modo oscuro" aria-label="Cambiar entre modo claro y oscuro"><i class="bi bi-moon-stars"></i></button>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
                 <span class="navbar-toggler-icon"></span>
@@ -109,6 +150,9 @@
             </ul>
             <ul class="navbar-nav align-items-lg-center">
                 <li class="nav-item me-lg-2 d-none d-xxl-block">
+                    <button type="button" class="install-app-btn" title="Instalar app" aria-label="Instalar JC-POS como aplicación"><i class="bi bi-download"></i></button>
+                </li>
+                <li class="nav-item me-lg-2 d-none d-xxl-block">
                     <button type="button" class="theme-toggle-btn" title="Cambiar a modo oscuro" aria-label="Cambiar entre modo claro y oscuro"><i class="bi bi-moon-stars"></i></button>
                 </li>
                 <li class="nav-item"><span class="user-chip"><i class="bi bi-person-circle"></i> {{ user.username }}{% if is_admin %} (admin){% else %} (cajero){% endif %}</span></li>
@@ -124,6 +168,32 @@
 </nav>
 {% else %}
 <button type="button" class="theme-toggle-btn theme-toggle-floating" title="Cambiar a modo oscuro" aria-label="Cambiar entre modo claro y oscuro"><i class="bi bi-moon-stars"></i></button>
+{% endif %}
+
+{% if user.is_authenticated %}
+<div class="modal fade" id="installInstructionsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-download"></i> Instalar JC-POS</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="install-instructions-ios" style="display:none;">
+                    <p>En iPhone/iPad, instálala desde Safari:</p>
+                    <ol class="mb-0">
+                        <li>Toca el botón <strong>Compartir</strong> <i class="bi bi-box-arrow-up"></i> en la barra inferior.</li>
+                        <li>Elige <strong>"Agregar a pantalla de inicio"</strong>.</li>
+                        <li>Confirma el nombre y toca <strong>Agregar</strong>.</li>
+                    </ol>
+                </div>
+                <div class="install-instructions-other">
+                    <p class="mb-0">Busca el ícono de instalar <i class="bi bi-download"></i> en la barra de direcciones de tu navegador, o abre el menú del navegador (⋮) y elige <strong>"Instalar aplicación"</strong> o <strong>"Agregar a pantalla de inicio"</strong>.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endif %}
 
 <div class="container-fluid py-4 px-4">
