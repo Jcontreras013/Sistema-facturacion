@@ -120,7 +120,31 @@ def run_migrations():
     call_command("seed_groups", verbosity=0)
 
 
-def ensure_admin_user():
+def generate_password():
+    alphabet = string.ascii_letters + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(10))
+
+
+def write_credentials_file(data_dir, password):
+    """Respaldo en texto plano de la contraseña del administrador, por si se
+    cierra o se pierde de vista la ventana emergente que solo la muestra una
+    vez. Vive únicamente en esta PC, en la carpeta de datos de la app."""
+    try:
+        (data_dir / "admin-password.txt").write_text(
+            "JC-POS - credenciales del administrador\n"
+            "=========================================\n\n"
+            f"Usuario: admin\n"
+            f"Contraseña: {password}\n\n"
+            f"Generado: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            "Puedes cambiar esta contraseña luego desde Admin > Usuarios,\n"
+            "y borrar este archivo una vez que la hayas anotado en un lugar seguro.\n",
+            encoding="utf-8",
+        )
+    except OSError:
+        pass
+
+
+def ensure_admin_user(data_dir):
     """Crea un usuario administrador la primera vez que se instala, para no
     depender de ninguna línea de comandos. Devuelve la contraseña generada,
     o None si ya existía un administrador de antes."""
@@ -128,9 +152,28 @@ def ensure_admin_user():
 
     if User.objects.filter(is_superuser=True).exists():
         return None
-    alphabet = string.ascii_letters + string.digits
-    password = "".join(secrets.choice(alphabet) for _ in range(10))
+    password = generate_password()
     User.objects.create_superuser(username="admin", email="", password=password)
+    write_credentials_file(data_dir, password)
+    return password
+
+
+def reset_admin_password(data_dir):
+    """Restablece (o crea, si no existía) la contraseña del usuario 'admin'
+    con una nueva generada al azar. Pensado para correrse desde línea de
+    comandos (jc-pos.exe --reset-admin) cuando se perdió la contraseña
+    original y no se pudo recuperar del archivo de respaldo."""
+    from django.contrib.auth.models import User
+
+    password = generate_password()
+    user, _created = User.objects.get_or_create(
+        username="admin", defaults={"is_superuser": True, "is_staff": True}
+    )
+    user.is_superuser = True
+    user.is_staff = True
+    user.set_password(password)
+    user.save()
+    write_credentials_file(data_dir, password)
     return password
 
 
@@ -147,12 +190,12 @@ def start_server(port):
     return thread
 
 
-def show_first_run_message(password, lan_url):
+def show_first_run_message(password, lan_url, data_dir, title=f"{APP_NAME} · Primer uso"):
     message = (
-        f"Se creó tu usuario administrador:\n\n"
         f"Usuario: admin\n"
         f"Contraseña: {password}\n\n"
-        f"Guárdala en un lugar seguro — la puedes cambiar luego desde Admin > Usuarios.\n\n"
+        f"Guárdala en un lugar seguro — la puedes cambiar luego desde Admin > Usuarios.\n"
+        f"También queda guardada en:\n{data_dir / 'admin-password.txt'}\n\n"
         f"Para que otro celular o tablet de la tienda se conecte a este mismo sistema,\n"
         f"abre en su navegador (conectado al mismo WiFi):\n{lan_url}"
     )
@@ -162,7 +205,8 @@ def show_first_run_message(password, lan_url):
 
         root = tkinter.Tk()
         root.withdraw()
-        messagebox.showinfo(f"{APP_NAME} · Primer uso", message)
+        root.attributes("-topmost", True)
+        messagebox.showinfo(title, message)
         root.destroy()
     except Exception:
         print(message)
@@ -189,6 +233,18 @@ def main():
     fix_streams(data_dir)
     configure_django_environment(base_dir, data_dir)
 
+    if "--reset-admin" in sys.argv:
+        import django
+
+        django.setup()
+        run_migrations()
+        password = reset_admin_password(data_dir)
+        show_first_run_message(
+            password, f"http://{get_lan_ip()}:{PREFERRED_PORT}/", data_dir,
+            title=f"{APP_NAME} · Contraseña restablecida",
+        )
+        return
+
     port = PREFERRED_PORT
     already_running = is_port_open("127.0.0.1", port)
 
@@ -197,12 +253,12 @@ def main():
 
         django.setup()
         run_migrations()
-        admin_password = ensure_admin_user()
+        admin_password = ensure_admin_user(data_dir)
         start_server(port)
         if not wait_for_server(port):
             raise RuntimeError("El servidor local de JC-POS no arrancó a tiempo.")
         if admin_password:
-            show_first_run_message(admin_password, f"http://{get_lan_ip()}:{port}/")
+            show_first_run_message(admin_password, f"http://{get_lan_ip()}:{port}/", data_dir)
 
     open_window(f"http://127.0.0.1:{port}/")
 

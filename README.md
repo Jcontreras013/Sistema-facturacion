@@ -118,8 +118,12 @@ manualmente desde esa misma pestaña con el botón **Run workflow**.
 - Instala la app para el usuario actual (no pide permisos de administrador).
 - Crea accesos directos en el Escritorio y el menú de inicio.
 - Al abrir por primera vez, crea automáticamente un usuario administrador (`admin`) con
-  una contraseña generada al azar, mostrada una sola vez en pantalla — anótala (se puede
-  cambiar después desde Admin → Usuarios).
+  una contraseña generada al azar, mostrada en pantalla y guardada también en
+  `%LOCALAPPDATA%\JC-POS\admin-password.txt` por si se cierra el mensaje sin anotarla
+  (se puede cambiar después desde Admin → Usuarios).
+- Si de todos modos se pierde la contraseña, el menú de inicio incluye un acceso directo
+  **"Restablecer contraseña de administrador"** que genera una nueva sin necesitar la
+  consola (equivale a correr `jc-pos.exe --reset-admin`).
 - Toda la información queda en una base de datos SQLite propia de esa PC
   (`%LOCALAPPDATA%\JC-POS\db.sqlite3`), sin depender de internet.
 - Otros celulares/tablets de la misma tienda (conectados al mismo WiFi) se pueden
