@@ -80,6 +80,28 @@ def get_lan_ip():
         return "127.0.0.1"
 
 
+def fix_streams(data_dir):
+    """PyInstaller, empacado sin consola (console=False), deja sys.stdout y
+    sys.stderr en None porque Windows no le asigna ninguna consola al proceso.
+    Cualquier código que intente escribir ahí (incluyendo comandos de Django
+    como 'migrate' o 'seed_groups') truena con 'NoneType' object has no
+    attribute 'write'. Los redirigimos a un archivo de log para que nunca
+    sean None, sin perder el detalle por si hay que diagnosticar algo."""
+    if sys.stdout is not None and sys.stderr is not None:
+        return
+    log_path = data_dir / "jc-pos.log"
+    try:
+        log_file = open(log_path, "a", encoding="utf-8", buffering=1)
+    except OSError:
+        import io
+
+        log_file = io.StringIO()
+    if sys.stdout is None:
+        sys.stdout = log_file
+    if sys.stderr is None:
+        sys.stderr = log_file
+
+
 def configure_django_environment(base_dir, data_dir):
     db_path = data_dir / "db.sqlite3"
     os.environ.setdefault("DATABASE_URL", f"sqlite:///{db_path}")
@@ -164,6 +186,7 @@ def open_window(url):
 def main():
     base_dir = resource_base_dir()
     data_dir = get_app_data_dir()
+    fix_streams(data_dir)
     configure_django_environment(base_dir, data_dir)
 
     port = PREFERRED_PORT
