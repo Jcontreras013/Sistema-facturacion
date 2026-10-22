@@ -1,6 +1,6 @@
 {
-    "name": "Mini Market - Sistema de Facturación",
-    "short_name": "Mini Market",
+    "name": "JC-POS - Sistema de Facturación",
+    "short_name": "JC-POS",
     "description": "Punto de venta e inventario para mini markets y pulperías",
     "start_url": "/",
     "scope": "/",

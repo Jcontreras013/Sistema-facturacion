@@ -41,7 +41,16 @@
             <strong>Cajero:</strong> {{ sale.user|default:"—" }}<br>
             <strong>Forma de pago:</strong> {{ sale.get_payment_method_display }}
             {% if sale.payment_method == "mixto" %}
-                <br><span class="small">Efectivo: L {{ sale.mixed_cash_amount|floatformat:2 }} + Otro: L {{ sale.mixed_other_amount|floatformat:2 }}</span>
+                <br><span class="small">
+                    Efectivo: L {{ sale.mixed_cash_amount|floatformat:2 }} + Otro: L {{ sale.mixed_other_amount|floatformat:2 }}
+                    {% if sale.mixed_other_usd_amount %}(US$ {{ sale.mixed_other_usd_amount|floatformat:2 }} a L {{ sale.exchange_rate|floatformat:4 }}){% endif %}
+                </span>
+            {% elif sale.payment_method == "dolares" %}
+                <br><span class="small">
+                    Recibido: US$ {{ sale.usd_received|floatformat:2 }} a L {{ sale.exchange_rate|floatformat:4 }}
+                    = L {{ sale.usd_lempira_equivalent|floatformat:2 }}
+                    {% if sale.usd_change_lempiras %}· Cambio: L {{ sale.usd_change_lempiras|floatformat:2 }}{% endif %}
+                </span>
             {% endif %}
         </div>
     </div>

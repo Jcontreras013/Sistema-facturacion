@@ -9,7 +9,30 @@ from core.models import Company
 from inventory.models import Product
 
 
+class Register(models.Model):
+    """Una caja / punto de cobro físico (ej. 'Caja 1', 'Caja 2'). Permite que varios
+    cajeros tengan su propia sesión de caja abierta al mismo tiempo, cada uno en la suya."""
+
+    name = models.CharField("Nombre", max_length=50, unique=True)
+    is_active = models.BooleanField("Activa", default=True, help_text="Las cajas inactivas no aparecen al abrir turno.")
+    created_at = models.DateTimeField("Creada", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Caja / punto de cobro"
+        verbose_name_plural = "Cajas / puntos de cobro"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+    def open_session(self):
+        return self.sessions.filter(closed_at__isnull=True).first()
+
+
 class CashSession(models.Model):
+    register = models.ForeignKey(
+        Register, verbose_name="Caja", on_delete=models.PROTECT, null=True, blank=True, related_name="sessions",
+    )
     opened_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="Abierta por", on_delete=models.SET_NULL, null=True,
         related_name="cash_sessions_opened",
@@ -31,6 +54,12 @@ class CashSession(models.Model):
         verbose_name = "Sesión de caja"
         verbose_name_plural = "Sesiones de caja"
         ordering = ["-opened_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["register"], condition=models.Q(closed_at__isnull=True),
+                name="unique_open_session_per_register",
+            )
+        ]
 
     def __str__(self):
         return f"Caja #{self.pk} ({'abierta' if self.is_open else 'cerrada'})"
@@ -46,7 +75,17 @@ class CashSession(models.Model):
         mixed_cash_total = self.sales.filter(status="completada", payment_method="mixto").aggregate(
             total=models.Sum("mixed_cash_amount")
         )["total"] or Decimal("0")
-        return cash_total + mixed_cash_total
+        # Las ventas en dólares no meten Lempiras a la caja: solo sale el cambio en
+        # Lempiras (el billete en USD se cuenta aparte, ver usd_cash_total()).
+        usd_change_total = Decimal("0")
+        for sale in self.sales.filter(status="completada", payment_method="dolares"):
+            usd_change_total += sale.total - (sale.usd_lempira_equivalent or sale.total)
+        return cash_total + mixed_cash_total + usd_change_total
+
+    def usd_cash_total(self):
+        return self.sales.filter(status="completada", payment_method="dolares").aggregate(
+            total=models.Sum("usd_received")
+        )["total"] or Decimal("0")
 
     def close(self, counted_amount, closed_by, notes=""):
         import django.utils.timezone as timezone
@@ -60,6 +99,29 @@ class CashSession(models.Model):
         self.save()
 
 
+def get_active_cash_session(request):
+    """Resuelve la sesión de caja que el usuario actual tiene abierta en este navegador.
+
+    Permite que varios cajeros trabajen a la vez, cada uno en su propia caja: se guarda
+    cuál caja eligió este usuario en su sesión de navegador (request.session), y si no hay
+    ninguna marcada (ej. inició sesión en otro dispositivo) se busca una caja que él mismo
+    tenga abierta y se recuerda para la próxima vez.
+    """
+    register_id = request.session.get("active_register_id")
+    session = None
+    if register_id:
+        session = CashSession.objects.filter(register_id=register_id, closed_at__isnull=True).first()
+    if session is None:
+        session = (
+            CashSession.objects.filter(opened_by=request.user, closed_at__isnull=True)
+            .order_by("-opened_at")
+            .first()
+        )
+        if session is not None:
+            request.session["active_register_id"] = session.register_id
+    return session
+
+
 class Sale(models.Model):
     PAYMENT_METHODS = [
         ("efectivo", "Efectivo"),
@@ -67,6 +129,7 @@ class Sale(models.Model):
         ("transferencia", "Transferencia"),
         ("credito", "Crédito (fiado)"),
         ("mixto", "Mixto (efectivo + otro)"),
+        ("dolares", "Dólares (US$)"),
     ]
     STATUS_CHOICES = [
         ("completada", "Completada"),
@@ -99,6 +162,16 @@ class Sale(models.Model):
     )
     mixed_other_amount = models.DecimalField(
         "Monto en otro método (pago mixto)", max_digits=12, decimal_places=2, null=True, blank=True
+    )
+    mixed_other_usd_amount = models.DecimalField(
+        "Monto en dólares (si el otro método del pago mixto fue en USD)",
+        max_digits=12, decimal_places=2, null=True, blank=True,
+    )
+    exchange_rate = models.DecimalField(
+        "Tipo de cambio aplicado (Lempiras por US$1)", max_digits=8, decimal_places=4, null=True, blank=True,
+    )
+    usd_received = models.DecimalField(
+        "Monto recibido en dólares", max_digits=12, decimal_places=2, null=True, blank=True,
     )
     discount_percent = models.DecimalField("Descuento (%)", max_digits=5, decimal_places=2, default=0)
     discount_authorized_by = models.ForeignKey(
@@ -175,6 +248,19 @@ class Sale(models.Model):
     @property
     def discount_amount(self):
         return (self.subtotal + self.tax) - self.total
+
+    @property
+    def usd_lempira_equivalent(self):
+        if self.usd_received is None or self.exchange_rate is None:
+            return None
+        return (self.usd_received * self.exchange_rate).quantize(Decimal("0.01"))
+
+    @property
+    def usd_change_lempiras(self):
+        equivalent = self.usd_lempira_equivalent
+        if equivalent is None:
+            return None
+        return equivalent - self.total
 
 
 class SaleItem(models.Model):

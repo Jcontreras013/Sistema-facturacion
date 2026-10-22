@@ -14,12 +14,13 @@
     <div class="table-responsive">
 <table class="table table-hover mb-0">
         <thead>
-        <tr><th>#</th><th>Abierta por</th><th>Apertura</th><th>Monto inicial</th><th>Cierre</th><th>Esperado</th><th>Contado</th><th>Diferencia</th><th></th></tr>
+        <tr><th>#</th><th>Caja</th><th>Abierta por</th><th>Apertura</th><th>Monto inicial</th><th>Cierre</th><th>Esperado</th><th>Contado</th><th>Diferencia</th><th></th></tr>
         </thead>
         <tbody>
         {% for session in sessions %}
             <tr class="{% if session.difference and session.difference != 0 %}table-low-stock{% endif %}">
                 <td>{{ session.pk }}</td>
+                <td>{{ session.register.name|default:"—" }}</td>
                 <td>{{ session.opened_by }}</td>
                 <td>{{ session.opened_at|date:"d/m/Y H:i" }}</td>
                 <td>L {{ session.opening_amount|floatformat:2 }}</td>
@@ -40,7 +41,7 @@
                 </td>
             </tr>
         {% empty %}
-            <tr><td colspan="9">
+            <tr><td colspan="10">
                 <div class="empty-state py-4">
                     <i class="bi bi-safe"></i>
                     <p>No hay sesiones de caja registradas.</p>

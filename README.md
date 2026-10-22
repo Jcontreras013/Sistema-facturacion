@@ -1,4 +1,4 @@
-# Sistema de Facturación para Mini Markets (Honduras)
+# JC-POS — Sistema de Facturación para Mini Markets (Honduras)
 
 Aplicación web construida con Django para administrar un mini market: punto de venta (POS), inventario, clientes/proveedores, caja y reportes, adaptada al régimen fiscal de Honduras (SAR).
 
@@ -99,6 +99,51 @@ Notas:
 - La base de datos free de Render expira a los 90 días; para uso real, actualiza a un plan pago cuando estés listo.
 - Puedes desactivar los datos de ejemplo cambiando `SEED_DEMO` a `"false"` en el servicio.
 
+## Aplicación de escritorio (instalador para Windows)
+
+Además de poder correr en la nube (ver abajo) o en modo desarrollo local, el sistema se
+puede instalar como una aplicación de escritorio normal en Windows — sin Render, sin
+internet y sin PostgreSQL: usa su propia base de datos SQLite guardada en la PC, con un
+instalador `JC-POS-Setup.exe` con ícono, acceso directo y desinstalador.
+
+**¿Cómo obtener el instalador?**
+
+Cada vez que se sube un cambio a la rama, el flujo `.github/workflows/build-windows-installer.yml`
+lo compila automáticamente en una máquina Windows (vía GitHub Actions) y deja el archivo
+`JC-POS-Setup.exe` listo para descargar en la pestaña **Actions** del repositorio → la
+ejecución más reciente → sección **Artifacts** → `JC-POS-Setup`. También puedes dispararlo
+manualmente desde esa misma pestaña con el botón **Run workflow**.
+
+**Qué hace el instalador:**
+- Instala la app para el usuario actual (no pide permisos de administrador).
+- Crea accesos directos en el Escritorio y el menú de inicio.
+- Al abrir por primera vez, crea automáticamente un usuario administrador (`admin`) con
+  una contraseña generada al azar, mostrada en pantalla y guardada también en
+  `%LOCALAPPDATA%\JC-POS\admin-password.txt` por si se cierra el mensaje sin anotarla
+  (se puede cambiar después desde Admin → Usuarios).
+- Si de todos modos se pierde la contraseña, el menú de inicio incluye un acceso directo
+  **"Restablecer contraseña de administrador"** que genera una nueva sin necesitar la
+  consola (equivale a correr `jc-pos.exe --reset-admin`).
+- Toda la información queda en una base de datos SQLite propia de esa PC
+  (`%LOCALAPPDATA%\JC-POS\db.sqlite3`), sin depender de internet.
+- Otros celulares/tablets de la misma tienda (conectados al mismo WiFi) se pueden
+  conectar a ese mismo sistema abriendo en su navegador la dirección de red local que
+  muestra el mensaje de bienvenida (por ejemplo `http://192.168.1.XX:58327/`) — así varios
+  cajeros pueden trabajar a la vez sin que cada uno necesite su propia instalación.
+
+**Compilarlo manualmente en una PC con Windows** (sin usar GitHub Actions):
+
+```powershell
+pip install -r desktop/requirements-desktop.txt
+$env:DEBUG = "False"
+python manage.py collectstatic --noinput
+pyinstaller desktop/jc-pos.spec --distpath dist --workpath build --noconfirm
+# Requiere Inno Setup instalado (https://jrsoftware.org/isdl.php):
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" desktop\installer.iss
+```
+
+El instalador final queda en `dist_installer\JC-POS-Setup.exe`.
+
 ## Estructura del proyecto
 
 - `config/` – configuración del proyecto Django (settings, urls).
@@ -107,6 +152,7 @@ Notas:
 - `clients/` – clientes.
 - `sales/` – punto de venta, caja, facturas, notas de crédito.
 - `reports/` – reportes de ventas, productos top, ganancias, stock bajo, vencimientos, impuestos y flujo de caja.
+- `desktop/` – lanzador y empaquetado de la aplicación de escritorio para Windows (PyInstaller + Inno Setup).
 
 ## Notas
 

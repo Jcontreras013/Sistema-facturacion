@@ -12,9 +12,9 @@
 </div>
 
 {% if open_session %}
-    <div class="alert alert-success">Caja abierta desde {{ open_session.opened_at|date:"d/m/Y H:i" }} por {{ open_session.opened_by }}. <a href="{% url 'sales:cash_session_close' %}">Cerrar caja</a></div>
+    <div class="alert alert-success">{{ open_session.register.name|default:"Tu caja" }} abierta desde {{ open_session.opened_at|date:"d/m/Y H:i" }} por {{ open_session.opened_by }}. <a href="{% url 'sales:cash_session_close' %}">Cerrar caja</a></div>
 {% else %}
-    <div class="alert alert-warning">No hay una caja abierta. <a href="{% url 'sales:cash_session_open' %}">Abrir caja</a> para poder vender.</div>
+    <div class="alert alert-warning">No tienes una caja abierta. <a href="{% url 'sales:cash_session_open' %}">Abrir caja</a> para poder vender.</div>
 {% endif %}
 
 <div class="row g-3 mb-4">

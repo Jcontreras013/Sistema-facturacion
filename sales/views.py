@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.signing import BadSignature, SignatureExpired, dumps, loads
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -18,7 +18,19 @@ from core.models import Company
 from core.permissions import admin_required, is_admin
 from inventory.models import Product, StockMovement
 
-from .models import CashSession, CreditNote, CreditNoteItem, HeldSale, Quote, QuoteItem, Sale, SaleItem
+from .forms import RegisterForm
+from .models import (
+    CashSession,
+    CreditNote,
+    CreditNoteItem,
+    HeldSale,
+    Quote,
+    QuoteItem,
+    Register,
+    Sale,
+    SaleItem,
+    get_active_cash_session,
+)
 
 DISCOUNT_TOKEN_SALT = "pos-discount-authorization"
 DISCOUNT_TOKEN_MAX_AGE = 300  # 5 minutos: el token de autorización expira rápido por seguridad.
@@ -40,13 +52,10 @@ def _verify_discount_token(token, expected_percent):
     return data.get("user_id")
 
 
-def _get_open_session():
-    return CashSession.objects.filter(closed_at__isnull=True).order_by("-opened_at").first()
-
-
 def _create_sale(
     user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes,
-    mixed_cash_amount=None, mixed_other_amount=None,
+    mixed_cash_amount=None, mixed_other_amount=None, mixed_other_usd_amount=None,
+    exchange_rate=None, usd_received=None,
     discount_percent=None, discount_token=None,
     contingency_correlative=None,
 ):
@@ -144,8 +153,14 @@ def _create_sale(
             )
 
         if payment_method == "mixto":
-            if mixed_cash_amount is None or mixed_other_amount is None:
-                raise ValueError("Ingresa el monto en efectivo y el monto del otro método para un pago mixto.")
+            if mixed_cash_amount is None:
+                raise ValueError("Ingresa el monto en efectivo para un pago mixto.")
+            if mixed_other_usd_amount is not None:
+                if not exchange_rate or exchange_rate <= 0:
+                    raise ValueError("Ingresa el tipo de cambio para la parte en dólares del pago mixto.")
+                mixed_other_amount = (mixed_other_usd_amount * exchange_rate).quantize(Decimal("0.01"))
+            elif mixed_other_amount is None:
+                raise ValueError("Ingresa el monto del otro método para un pago mixto.")
             combined = mixed_cash_amount + mixed_other_amount
             if abs(combined - sale.total) > Decimal("0.01"):
                 raise ValueError(
@@ -153,7 +168,27 @@ def _create_sale(
                 )
             sale.mixed_cash_amount = mixed_cash_amount
             sale.mixed_other_amount = mixed_other_amount
-            sale.save(update_fields=["mixed_cash_amount", "mixed_other_amount"])
+            update_fields = ["mixed_cash_amount", "mixed_other_amount"]
+            if mixed_other_usd_amount is not None:
+                sale.mixed_other_usd_amount = mixed_other_usd_amount
+                sale.exchange_rate = exchange_rate
+                update_fields += ["mixed_other_usd_amount", "exchange_rate"]
+            sale.save(update_fields=update_fields)
+
+        if payment_method == "dolares":
+            if not exchange_rate or exchange_rate <= 0:
+                raise ValueError("Ingresa el tipo de cambio del día.")
+            if not usd_received or usd_received <= 0:
+                raise ValueError("Ingresa el monto recibido en dólares.")
+            equivalent = (usd_received * exchange_rate).quantize(Decimal("0.01"))
+            if equivalent < sale.total - Decimal("0.01"):
+                raise ValueError(
+                    f"El monto en dólares (equivale a L {equivalent:.2f} al tipo de cambio ingresado) "
+                    f"no cubre el total de la venta (L {sale.total:.2f})."
+                )
+            sale.exchange_rate = exchange_rate
+            sale.usd_received = usd_received
+            sale.save(update_fields=["exchange_rate", "usd_received"])
     log_action(user, "created", sale)
     return sale
 
@@ -167,7 +202,7 @@ def _sale_redirect_url(sale):
 
 @login_required
 def pos(request):
-    open_session = _get_open_session()
+    open_session = get_active_cash_session(request)
     if not open_session:
         messages.warning(request, "No hay una caja abierta. Abre la caja antes de registrar ventas.")
         return redirect("sales:cash_session_open")
@@ -181,6 +216,9 @@ def pos(request):
         notes = request.POST.get("notes", "")
         mixed_cash_amount = request.POST.get("mixed_cash_amount") or None
         mixed_other_amount = request.POST.get("mixed_other_amount") or None
+        mixed_other_usd_amount = request.POST.get("mixed_other_usd_amount") or None
+        exchange_rate = request.POST.get("exchange_rate") or None
+        usd_received = request.POST.get("usd_received") or None
         discount_percent = request.POST.get("discount_percent") or None
         discount_token = request.POST.get("discount_token") or None
 
@@ -198,6 +236,9 @@ def pos(request):
                 request.user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes,
                 mixed_cash_amount=Decimal(mixed_cash_amount) if mixed_cash_amount else None,
                 mixed_other_amount=Decimal(mixed_other_amount) if mixed_other_amount else None,
+                mixed_other_usd_amount=Decimal(mixed_other_usd_amount) if mixed_other_usd_amount else None,
+                exchange_rate=Decimal(exchange_rate) if exchange_rate else None,
+                usd_received=Decimal(usd_received) if usd_received else None,
                 discount_percent=discount_percent, discount_token=discount_token,
             )
         except (ValueError, InvalidOperation, KeyError) as exc:
@@ -254,6 +295,7 @@ def pos(request):
             "payment_methods": Sale.PAYMENT_METHODS,
             "open_session": open_session,
             "contingency_json": json.dumps(Company.load().contingency_config()),
+            "default_exchange_rate": str(Company.load().default_exchange_rate or ""),
         },
     )
 
@@ -264,7 +306,7 @@ def pos_checkout_api(request):
     if request.method != "POST":
         return JsonResponse({"ok": False, "error": "Método no permitido."}, status=405)
 
-    open_session = _get_open_session()
+    open_session = get_active_cash_session(request)
     if not open_session:
         return JsonResponse(
             {"ok": False, "error": "No hay una caja abierta.", "code": "no_session"}, status=409
@@ -283,6 +325,9 @@ def pos_checkout_api(request):
     notes = payload.get("notes") or ""
     mixed_cash_amount = payload.get("mixed_cash_amount")
     mixed_other_amount = payload.get("mixed_other_amount")
+    mixed_other_usd_amount = payload.get("mixed_other_usd_amount")
+    exchange_rate = payload.get("exchange_rate")
+    usd_received = payload.get("usd_received")
     discount_percent = payload.get("discount_percent")
     discount_token = payload.get("discount_token")
     contingency_correlative = payload.get("contingency_correlative")
@@ -303,6 +348,11 @@ def pos_checkout_api(request):
             request.user, open_session, cart, client_id, client_rtn, new_client_name, payment_method, notes,
             mixed_cash_amount=Decimal(str(mixed_cash_amount)) if mixed_cash_amount not in (None, "") else None,
             mixed_other_amount=Decimal(str(mixed_other_amount)) if mixed_other_amount not in (None, "") else None,
+            mixed_other_usd_amount=(
+                Decimal(str(mixed_other_usd_amount)) if mixed_other_usd_amount not in (None, "") else None
+            ),
+            exchange_rate=Decimal(str(exchange_rate)) if exchange_rate not in (None, "") else None,
+            usd_received=Decimal(str(usd_received)) if usd_received not in (None, "") else None,
             discount_percent=discount_percent, discount_token=discount_token,
             contingency_correlative=contingency_correlative,
         )
@@ -522,29 +572,50 @@ def sale_delete(request, pk):
 
 @login_required
 def cash_session_open(request):
-    existing = _get_open_session()
+    existing = get_active_cash_session(request)
     if existing:
-        messages.info(request, "Ya hay una caja abierta.")
+        messages.info(request, "Ya tienes una caja abierta.")
         return redirect("sales:pos")
 
+    registers = list(Register.objects.filter(is_active=True))
+    open_by_register = {
+        s.register_id: s.opened_by
+        for s in CashSession.objects.filter(register__in=registers, closed_at__isnull=True).select_related("opened_by")
+    }
+    register_rows = [{"register": r, "occupied_by": open_by_register.get(r.id)} for r in registers]
+
     if request.method == "POST":
+        register = Register.objects.filter(pk=request.POST.get("register_id"), is_active=True).first()
+        if not register:
+            messages.error(request, "Selecciona una caja válida.")
+            return redirect("sales:cash_session_open")
+        if register.open_session():
+            messages.error(request, f"'{register.name}' ya tiene una sesión abierta por otro cajero.")
+            return redirect("sales:cash_session_open")
         try:
             opening_amount = Decimal(request.POST.get("opening_amount", "0"))
         except InvalidOperation:
             opening_amount = Decimal("0")
-        session = CashSession.objects.create(opened_by=request.user, opening_amount=opening_amount)
+        try:
+            session = CashSession.objects.create(
+                register=register, opened_by=request.user, opening_amount=opening_amount
+            )
+        except IntegrityError:
+            messages.error(request, f"'{register.name}' ya tiene una sesión abierta por otro cajero.")
+            return redirect("sales:cash_session_open")
+        request.session["active_register_id"] = register.id
         log_action(request.user, "created", session)
-        messages.success(request, "Caja abierta correctamente.")
+        messages.success(request, f"'{register.name}' abierta correctamente.")
         return redirect("sales:pos")
 
-    return render(request, "sales/cash_session_open.html")
+    return render(request, "sales/cash_session_open.html", {"register_rows": register_rows})
 
 
 @login_required
 def cash_session_close(request):
-    session = _get_open_session()
+    session = get_active_cash_session(request)
     if not session:
-        messages.info(request, "No hay ninguna caja abierta.")
+        messages.info(request, "No tienes ninguna caja abierta.")
         return redirect("sales:pos")
 
     expected = session.opening_amount + session.cash_sales_total()
@@ -557,6 +628,7 @@ def cash_session_close(request):
         notes = request.POST.get("notes", "")
         session.close(counted_amount=counted_amount, closed_by=request.user, notes=notes)
         log_action(request.user, "updated", session, extra="Caja cerrada")
+        request.session.pop("active_register_id", None)
         messages.success(request, f"Caja cerrada. Diferencia: L {session.difference:.2f}")
         return redirect("sales:cash_session_list")
 
@@ -565,7 +637,7 @@ def cash_session_close(request):
 
 @admin_required
 def cash_session_list(request):
-    sessions = CashSession.objects.select_related("opened_by", "closed_by").all()
+    sessions = CashSession.objects.select_related("register", "opened_by", "closed_by").all()
     return render(request, "sales/cash_session_list.html", {"sessions": sessions})
 
 
@@ -578,6 +650,49 @@ def cash_session_delete(request, pk):
         messages.success(request, f"Sesión de caja #{pk} eliminada.")
         return redirect("sales:cash_session_list")
     return render(request, "sales/cash_session_confirm_delete.html", {"session": session})
+
+
+@admin_required
+def register_list(request):
+    registers = Register.objects.all()
+    if request.method == "POST":
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            register = form.save()
+            log_action(request.user, "created", register)
+            messages.success(request, "Caja creada correctamente.")
+            return redirect("sales:register_list")
+    else:
+        form = RegisterForm()
+    return render(request, "sales/register_list.html", {"registers": registers, "form": form})
+
+
+@admin_required
+def register_toggle(request, pk):
+    register = get_object_or_404(Register, pk=pk)
+    if request.method == "POST":
+        if register.is_active and register.open_session():
+            messages.error(request, f"No puedes desactivar '{register.name}' mientras tiene una sesión abierta.")
+        else:
+            register.is_active = not register.is_active
+            register.save(update_fields=["is_active"])
+            log_action(request.user, "updated", register, extra="Activa" if register.is_active else "Desactivada")
+    return redirect("sales:register_list")
+
+
+@admin_required
+def register_delete(request, pk):
+    register = get_object_or_404(Register, pk=pk)
+    if request.method == "POST":
+        if register.sessions.exists():
+            messages.error(
+                request, f"No se puede eliminar '{register.name}' porque ya tiene historial de caja. Desactívala en su lugar."
+            )
+        else:
+            log_action(request.user, "deleted", register)
+            register.delete()
+            messages.success(request, "Caja eliminada.")
+    return redirect("sales:register_list")
 
 
 @login_required

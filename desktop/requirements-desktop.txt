@@ -1,0 +1,12 @@
+# Dependencias para compilar/correr JC-POS como app de escritorio (Windows).
+# No incluye gunicorn (no funciona en Windows) ni psycopg (el escritorio usa SQLite),
+# a diferencia de requirements.txt que es para el despliegue en la nube.
+Django==5.2.16
+python-dotenv==1.0.1
+whitenoise==6.12.0
+dj-database-url==3.1.2
+openpyxl==3.1.5
+xlrd==2.0.1
+waitress==3.0.2
+pywebview==5.3.2
+pyinstaller==6.11.1

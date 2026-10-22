@@ -9,7 +9,7 @@ from django.template.loader import render_to_string
 from django.http import HttpResponse
 
 from inventory.models import Product
-from sales.models import CashSession, Sale
+from sales.models import Sale, get_active_cash_session
 
 from .audit import log_action
 from .forms import CompanyForm, UserCreateForm, UserUpdateForm
@@ -38,7 +38,7 @@ def dashboard(request):
     low_stock_products = [p for p in products if p.is_low_stock][:10]
     expiring_products = [p for p in products if p.is_expiring_soon or p.is_expired][:10]
     recent_sales = Sale.objects.select_related("client", "user").all()[:8]
-    open_session = CashSession.objects.filter(closed_at__isnull=True).first()
+    open_session = get_active_cash_session(request)
 
     return render(
         request,
