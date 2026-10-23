@@ -6,6 +6,7 @@ ventana de escritorio nativa. Pensado para empacarse con PyInstaller + Inno
 Setup (ver desktop/jc-pos.spec y desktop/installer.iss).
 """
 
+import json
 import os
 import secrets
 import socket
@@ -18,6 +19,7 @@ from pathlib import Path
 
 APP_NAME = "JC-POS"
 PREFERRED_PORT = 58327
+CONFIG_FILENAME = "config.json"
 
 
 def get_app_data_dir():
@@ -78,6 +80,117 @@ def get_lan_ip():
         return ip
     except Exception:
         return "127.0.0.1"
+
+
+def load_config(data_dir):
+    config_path = data_dir / CONFIG_FILENAME
+    if not config_path.exists():
+        return None
+    try:
+        return json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def save_config(data_dir, config):
+    try:
+        (data_dir / CONFIG_FILENAME).write_text(json.dumps(config, indent=2), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def show_message(title, message):
+    try:
+        import tkinter
+        from tkinter import messagebox
+
+        root = tkinter.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        messagebox.showinfo(title, message)
+        root.destroy()
+    except Exception:
+        print(f"{title}\n{message}")
+
+
+def ask_role_and_server(data_dir):
+    """Pregunta, la primera vez que se abre la app en esta PC (o cuando se
+    pide explícitamente con --configure), si esta computadora es la
+    principal/servidor o si se va a conectar a una caja ya instalada en la
+    red. Devuelve el dict de configuración guardado, o None si se canceló."""
+    try:
+        import tkinter
+        from tkinter import messagebox, simpledialog
+    except Exception:
+        # Sin tkinter disponible (no debería pasar en el build de Windows):
+        # por seguridad, asumimos que esta PC es el servidor.
+        config = {"mode": "server"}
+        save_config(data_dir, config)
+        return config
+
+    root = tkinter.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+
+    is_server = messagebox.askyesno(
+        f"{APP_NAME} · Configuración inicial",
+        "¿Esta es la ÚNICA computadora del negocio, o la PRINCIPAL donde se "
+        "guardan los datos?\n\n"
+        "Elige 'Sí' en la mayoría de los casos (incluyendo si solo usas una caja).\n\n"
+        "Elige 'No' solo si esta PC va a ser una caja adicional que se conecta "
+        "a otra computadora donde JC-POS ya está instalado como principal.",
+        parent=root,
+    )
+
+    if is_server:
+        config = {"mode": "server"}
+        save_config(data_dir, config)
+        root.destroy()
+        return config
+
+    server_url = None
+    while server_url is None:
+        address = simpledialog.askstring(
+            f"{APP_NAME} · Conectar a otra caja",
+            "Escribe la dirección de red de la computadora principal\n"
+            "(te la debe dar quien la instaló ahí), por ejemplo:\n\n"
+            "192.168.1.50\n\n"
+            "o el nombre de esa PC, por ejemplo:\nCAJA-PRINCIPAL",
+            parent=root,
+        )
+        if address is None:
+            root.destroy()
+            return None
+        address = address.strip()
+        if not address:
+            continue
+        if address.startswith("http://") or address.startswith("https://"):
+            server_url = address if address.endswith("/") else address + "/"
+        else:
+            address = address.split("/")[0]
+            if ":" not in address:
+                address = f"{address}:{PREFERRED_PORT}"
+            server_url = f"http://{address}/"
+
+    host_port = server_url.split("//", 1)[1].rstrip("/")
+    host, _, port_str = host_port.partition(":")
+    reachable = is_port_open(host, int(port_str) if port_str.isdigit() else PREFERRED_PORT, timeout=2)
+    if not reachable:
+        messagebox.showwarning(
+            f"{APP_NAME} · Aviso",
+            f"No se pudo conectar ahora mismo a {server_url}\n\n"
+            "Puede que esa PC esté apagada, que el sistema no esté abierto ahí, "
+            "o que la dirección esté mal escrita.\n\n"
+            "Se guardó de todas formas — JC-POS intentará conectarse cada vez "
+            "que lo abras. Si el problema sigue, usa 'Configurar conexión' "
+            "desde el menú de inicio para corregir la dirección.",
+            parent=root,
+        )
+
+    config = {"mode": "client", "server_url": server_url}
+    save_config(data_dir, config)
+    root.destroy()
+    return config
 
 
 def fix_streams(data_dir):
@@ -196,23 +309,27 @@ def show_first_run_message(password, lan_url, data_dir, title=f"{APP_NAME} · Pr
         f"Contraseña: {password}\n\n"
         f"Guárdala en un lugar seguro — la puedes cambiar luego desde Admin > Usuarios.\n"
         f"También queda guardada en:\n{data_dir / 'admin-password.txt'}\n\n"
-        f"Para que otro celular o tablet de la tienda se conecte a este mismo sistema,\n"
-        f"abre en su navegador (conectado al mismo WiFi):\n{lan_url}"
+        f"Para conectar otras cajas a este mismo sistema, en esa PC elige "
+        f"'Configurar conexión' y escribe esta dirección:\n{lan_url}"
     )
-    try:
-        import tkinter
-        from tkinter import messagebox
-
-        root = tkinter.Tk()
-        root.withdraw()
-        root.attributes("-topmost", True)
-        messagebox.showinfo(title, message)
-        root.destroy()
-    except Exception:
-        print(message)
+    show_message(title, message)
 
 
-def open_window(url):
+def open_window(url, check_reachable=False):
+    if check_reachable:
+        host_port = url.split("//", 1)[1].rstrip("/")
+        host, _, port_str = host_port.partition(":")
+        port = int(port_str) if port_str.isdigit() else PREFERRED_PORT
+        if not any(is_port_open(host, port, timeout=1) for _ in range(3)):
+            show_message(
+                f"{APP_NAME} · No se pudo conectar",
+                f"No se pudo conectar a la computadora principal ({url}).\n\n"
+                "Verifica que esa PC esté encendida, que JC-POS esté abierto ahí, "
+                "y que ambas estén en la misma red WiFi.\n\n"
+                "Si la dirección cambió, usa 'Configurar conexión' desde el menú "
+                "de inicio para corregirla.",
+            )
+            return
     try:
         import webview
 
@@ -227,26 +344,22 @@ def open_window(url):
                 time.sleep(3600)
 
 
-def main():
-    base_dir = resource_base_dir()
-    data_dir = get_app_data_dir()
-    fix_streams(data_dir)
+def run_as_server(base_dir, data_dir, reset_admin=False):
     configure_django_environment(base_dir, data_dir)
+    port = PREFERRED_PORT
+    already_running = is_port_open("127.0.0.1", port)
 
-    if "--reset-admin" in sys.argv:
+    if reset_admin:
         import django
 
         django.setup()
         run_migrations()
         password = reset_admin_password(data_dir)
         show_first_run_message(
-            password, f"http://{get_lan_ip()}:{PREFERRED_PORT}/", data_dir,
+            password, f"http://{get_lan_ip()}:{port}/", data_dir,
             title=f"{APP_NAME} · Contraseña restablecida",
         )
         return
-
-    port = PREFERRED_PORT
-    already_running = is_port_open("127.0.0.1", port)
 
     if not already_running:
         import django
@@ -261,6 +374,42 @@ def main():
             show_first_run_message(admin_password, f"http://{get_lan_ip()}:{port}/", data_dir)
 
     open_window(f"http://127.0.0.1:{port}/")
+
+
+def run_as_client(data_dir, config, reset_admin=False):
+    if reset_admin:
+        show_message(
+            f"{APP_NAME} · Esta PC es una caja conectada",
+            "Esta computadora está configurada como una caja que se conecta a "
+            "otra PC principal — no tiene su propia base de datos.\n\n"
+            "Restablece la contraseña del administrador desde 'Restablecer "
+            "contraseña de administrador' en la computadora principal, no en esta.",
+        )
+        return
+    open_window(config["server_url"], check_reachable=True)
+
+
+def main():
+    base_dir = resource_base_dir()
+    data_dir = get_app_data_dir()
+    fix_streams(data_dir)
+
+    reset_admin = "--reset-admin" in sys.argv
+
+    if "--configure" in sys.argv:
+        ask_role_and_server(data_dir)
+        return
+
+    config = load_config(data_dir)
+    if config is None:
+        config = ask_role_and_server(data_dir)
+        if config is None:
+            return
+
+    if config.get("mode") == "client":
+        run_as_client(data_dir, config, reset_admin=reset_admin)
+    else:
+        run_as_server(base_dir, data_dir, reset_admin=reset_admin)
 
 
 if __name__ == "__main__":

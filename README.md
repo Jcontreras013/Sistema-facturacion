@@ -117,19 +117,27 @@ manualmente desde esa misma pestaña con el botón **Run workflow**.
 **Qué hace el instalador:**
 - Instala la app para el usuario actual (no pide permisos de administrador).
 - Crea accesos directos en el Escritorio y el menú de inicio.
-- Al abrir por primera vez, crea automáticamente un usuario administrador (`admin`) con
-  una contraseña generada al azar, mostrada en pantalla y guardada también en
-  `%LOCALAPPDATA%\JC-POS\admin-password.txt` por si se cierra el mensaje sin anotarla
+- **Varias cajas con el mismo instalador:** es el mismo `JC-POS-Setup.exe` para todas las
+  computadoras de la tienda. La primera vez que se abre en cada PC, pregunta si esa
+  computadora es la **única/principal** (guarda ahí los datos — responder "Sí" en el caso
+  normal de un negocio con una sola caja) o si es una **caja adicional que se conecta a
+  otra PC principal** (responder "No" y escribir la dirección de esa otra computadora, una
+  sola vez). Esa elección se puede cambiar después desde el acceso directo del menú de
+  inicio **"Configurar conexión"** (equivale a `jc-pos.exe --configure`).
+  - La PC "principal" es la única que corre su propio Django + base de datos SQLite
+    (`%LOCALAPPDATA%\JC-POS\db.sqlite3`); las cajas "conectadas" solo abren una ventana
+    apuntando a esa PC por la red local — no tienen base de datos propia, así que los
+    productos que ingresa el supervisor en la principal aparecen al instante en todas.
+  - Todas las PCs deben estar en la misma red WiFi/cableada, y la PC principal debe
+    quedar encendida mientras la tienda esté abierta. Conviene darle una IP fija en el
+    router (o usar su nombre de red) para que la dirección no cambie.
+- Al abrir por primera vez la PC principal, crea automáticamente un usuario administrador
+  (`admin`) con una contraseña generada al azar, mostrada en pantalla y guardada también
+  en `%LOCALAPPDATA%\JC-POS\admin-password.txt` por si se cierra el mensaje sin anotarla
   (se puede cambiar después desde Admin → Usuarios).
 - Si de todos modos se pierde la contraseña, el menú de inicio incluye un acceso directo
   **"Restablecer contraseña de administrador"** que genera una nueva sin necesitar la
-  consola (equivale a correr `jc-pos.exe --reset-admin`).
-- Toda la información queda en una base de datos SQLite propia de esa PC
-  (`%LOCALAPPDATA%\JC-POS\db.sqlite3`), sin depender de internet.
-- Otros celulares/tablets de la misma tienda (conectados al mismo WiFi) se pueden
-  conectar a ese mismo sistema abriendo en su navegador la dirección de red local que
-  muestra el mensaje de bienvenida (por ejemplo `http://192.168.1.XX:58327/`) — así varios
-  cajeros pueden trabajar a la vez sin que cada uno necesite su propia instalación.
+  consola (equivale a correr `jc-pos.exe --reset-admin`, y solo aplica en la PC principal).
 
 **Compilarlo manualmente en una PC con Windows** (sin usar GitHub Actions):
 

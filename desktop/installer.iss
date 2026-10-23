@@ -39,6 +39,7 @@ Source: "..\dist\jc-pos\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdir
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\Configurar conexión"; Filename: "{app}\{#MyAppExeName}"; Parameters: "--configure"
 Name: "{group}\Restablecer contraseña de administrador"; Filename: "{app}\{#MyAppExeName}"; Parameters: "--reset-admin"
 Name: "{group}\Desinstalar {#MyAppName}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
